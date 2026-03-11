@@ -28,6 +28,11 @@ app = FastAPI(title="Jadek & Pensa — Sistem za sprejem strank")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    # Serve favicon from repo root so browsers can GET /favicon.ico
+    return FileResponse("favicon.ico", media_type="image/x-icon")
+
 openai_client = OpenAI(
     api_key=os.environ["OPENAI_API_KEY"],
     base_url=os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1"),
