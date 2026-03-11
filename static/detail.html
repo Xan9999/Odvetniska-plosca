@@ -242,14 +242,6 @@
 
       </div>
 
-      <!-- Detail panel: Q&A / Citation detail (click-triggered, persistent) -->
-      <div id="detail-panel" class="hidden bg-white border border-indigo-200 rounded-xl shadow-sm overflow-hidden">
-        <div class="px-5 py-3 border-b border-indigo-100 flex items-center justify-between bg-indigo-50">
-          <span id="detail-panel-label" class="text-xs font-semibold text-indigo-700"></span>
-          <button onclick="closeDetailPanel()" class="text-indigo-400 hover:text-indigo-700 text-lg leading-none">&times;</button>
-        </div>
-        <div id="detail-panel-body" class="px-5 py-4 text-xs text-slate-700 leading-relaxed space-y-3"></div>
-      </div>
 
       <!-- Attachments -->
       <div id="attachments-card" class="hidden bg-white border border-slate-200 rounded-xl shadow-sm px-5 py-3">
@@ -724,15 +716,6 @@
         ${cit.izid  ? `<br><span class="text-green-700 font-medium">✓ ${esc(cit.izid)}</span>` : ''}`;
 
       if (anchorEl) insertInlineTip(anchorEl, innerHtml, 'cite-tip');
-
-      document.getElementById('detail-panel-label').textContent = `Primer [${num}]`;
-      document.getElementById('detail-panel-body').innerHTML = `
-        <p class="font-semibold text-slate-800">${esc(cit.naslov || '')}</p>
-        ${cit.leto ? `<p class="text-slate-400">Leto ${cit.leto}</p>` : ''}
-        ${cit.opis  ? `<p class="text-slate-600">${esc(cit.opis)}</p>` : ''}
-        ${cit.izid  ? `<p class="text-green-700 font-medium">✓ ${esc(cit.izid)}</p>` : ''}
-      `;
-      document.getElementById('detail-panel').classList.remove('hidden');
     }
 
     function showQAPanel(idx, anchorEl) {
@@ -740,7 +723,7 @@
       if (!qa) return;
       const srcs = qa.sources || [];
       const srcHtml = srcs.length
-        ? `<div class="pt-2 border-t border-slate-100 space-y-1">
+        ? `<div class="mt-2 pt-2 border-t border-slate-100 space-y-1">
             <p class="text-slate-400 font-medium mb-1">Viri (Tax-Fin-Lex):</p>
             ${srcs.map(s => tflSourceBtn(s)).join('')}
            </div>`
@@ -748,21 +731,13 @@
 
       const tipHtml = `
         <span class="text-slate-400 italic">${esc(qa.vprasanje || '')}</span><br>
-        ${esc(qa.odgovor || '')}`;
+        <span class="text-slate-700">${esc(qa.odgovor || '')}</span>
+        ${srcHtml}`;
 
       if (anchorEl) insertInlineTip(anchorEl, tipHtml, 'qa-tip');
-
-      document.getElementById('detail-panel-label').textContent = `Odgovor ${idx + 1}`;
-      document.getElementById('detail-panel-body').innerHTML = `
-        <p class="text-slate-400 italic mb-1">${esc(qa.vprasanje || '')}</p>
-        <p class="text-slate-700 leading-relaxed">${esc(qa.odgovor || '')}</p>
-        ${srcHtml}
-      `;
-      document.getElementById('detail-panel').classList.remove('hidden');
     }
 
     function closeDetailPanel() {
-      document.getElementById('detail-panel').classList.add('hidden');
       document.querySelectorAll('.cited-sentence,.qa-item').forEach(x => x.classList.remove('active'));
     }
 
@@ -1214,8 +1189,6 @@
       document.getElementById('right-panel').classList.add('edit-mode-locked');
       const ip = document.getElementById('insight-panel');
       if (ip) ip.classList.add('edit-mode-locked');
-      const dp = document.getElementById('detail-panel');
-      if (dp) dp.classList.add('hidden');
       removeInlineTips();
 
       // Add edit mode banner
