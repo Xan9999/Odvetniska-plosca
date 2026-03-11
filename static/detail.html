@@ -342,13 +342,6 @@
         </div>
       </div>
 
-      <!-- TFL deadline info -->
-      <div id="tfl-deadline-card" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-4 shadow-sm">
-        <h3 class="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2">Zakonski roki (TFL)</h3>
-        <p id="tfl-deadline-text" class="text-xs text-amber-900 leading-relaxed"></p>
-        <div id="tfl-deadline-sources" class="mt-2 space-y-1"></div>
-      </div>
-
       <!-- Video conference calendar -->
       <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
         <div class="flex items-center justify-between mb-3">
@@ -476,7 +469,6 @@
       renderTeamPanels();
       renderQuestionsPanel();
       renderTflRefs(r.tfl_refs || []);
-      renderTflDeadline(r.tfl_deadline || {});
       renderAttachments(r.attachments || []);
       const urgent = (r.analysis?.rok?.nujno) || (r.analysis?.nujnost >= 0.8);
       await initCalendar(urgent);
@@ -747,7 +739,14 @@
       const lbl = document.getElementById('deadline-label');
       lbl.textContent = rok.cas_dni === 1 ? 'Manj kot 1 dan' : `${rok.cas_dni} dni`;
       lbl.className = `font-semibold text-sm ${urgent ? 'text-red-600' : 'text-amber-700'}`;
-      document.getElementById('deadline-desc').textContent = rok.opis || '';
+      // Show breakdown if both components are known
+      let desc = rok.opis || '';
+      if (rok.zakonski_limit_dni != null && rok.stranka_cas_dni != null) {
+        const zakonski_preostanek = rok.zakonski_limit_dni - (rok.preteklo_dni || 0);
+        desc = `Zakonski preostanek: ${zakonski_preostanek} dni · Stranka: ${rok.stranka_cas_dni} dni`;
+        if (rok.opis) desc += ` — ${rok.opis}`;
+      }
+      document.getElementById('deadline-desc').textContent = desc;
     }
 
     // ── Metrics ───────────────────────────────────────────────────────────────
@@ -1229,19 +1228,6 @@
       } finally {
         btn.textContent = orig;
         btn.disabled = false;
-      }
-    }
-
-    // ── TFL deadline ──────────────────────────────────────────────────────────
-    function renderTflDeadline(tflDeadline) {
-      if (!tflDeadline?.tfl_deadline_info) return;
-      const card = document.getElementById('tfl-deadline-card');
-      card.classList.remove('hidden');
-      document.getElementById('tfl-deadline-text').textContent = tflDeadline.tfl_deadline_info;
-      const srcs = tflDeadline.tfl_deadline_sources || [];
-      if (srcs.length) {
-        document.getElementById('tfl-deadline-sources').innerHTML =
-          srcs.map(s => tflSourceBtn(s)).join('');
       }
     }
 

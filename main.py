@@ -88,8 +88,11 @@ Vrni ta JSON:
   "profit": <ocena zaslužka v EUR, celo število>,
   "rok": {{
     "nujno": <true/false>,
-    "cas_dni": <število dni ali null>,
-    "opis": "<kratek opis roka ali null>"
+    "cas_dni": <efektivni rok v dnevih — MINIMUM med zakonskim in strankinim — ali null>,
+    "opis": "<kratek opis: npr. 'Zakonski rok (GDPR 72h) poteče čez 1 dan; stranka želi 14 dni' ali null>",
+    "zakonski_limit_dni": <skupen zakonski limit v dnevih ali null — npr. 72h = 3>,
+    "preteklo_dni": <koliko dni je že preteklo od sprožitvenega dogodka ali null>,
+    "stranka_cas_dni": <rok ki ga navaja stranka v dnevih ali null>
   }},
   "entitete": {{
     "stranke": ["<ime podjetja ali osebe — stranka ki piše>"],
@@ -104,6 +107,12 @@ Vrni ta JSON:
   "aml_razlaga": "<1–2 stavka: zakaj takšna ocena AML tveganja — navedi konkretne indikatorje: jurisdikcija, izvor sredstev, lastniška struktura, vrsta posla>",
   "aml_checklist": ["<dokument 1 — V JEZIKU MAILA>", "<dokument 2>", ...]
 }}
+
+⚠️ ROK — OBVEZNO: "cas_dni" mora biti MINIMUM med zakonskim in strankinim rokom.
+- Določi zakonski rok: npr. GDPR = 72h = 3 dni od incidenta, ZPP = 30 dni od vročitve, M&A FDI = 30 dni od prijave ipd.
+- Odštej že pretekle dni od sprožitvenega dogodka (preteklo_dni) od zakonskega limita → dobiš preostale zakonske dni.
+- Primerjaj s strankinim rokom (stranka_cas_dni) → cas_dni = min(zakonski_preostali, stranka_cas_dni).
+- Če nobeden ni znan, vrni null.
 
 ⚠️ JEZIK — OBVEZNO: Polji "dodatna_vprasanja" IN "aml_checklist" morata biti IZKLJUČNO v ISTEM JEZIKU KOT E-MAIL.
 - Mail v slovenščini → oba polji SAMO v slovenščini, nobena beseda v angleščini
@@ -560,13 +569,6 @@ async def process_email(
     if TFL_API_KEY and analysis.get("povzetek"):
         tfl_refs = tfl_search(analysis["povzetek"], types=["act", "court"])
 
-    # Call 6 — TFL statutory deadline analysis
-    tfl_deadline = {}
-    if TFL_API_KEY and analysis.get("legal_field") and analysis.get("povzetek"):
-        tfl_deadline = tfl_get_deadline_info(
-            analysis["legal_field"], analysis["povzetek"]
-        )
-
     record = {
         "id": str(uuid.uuid4()),
         "created_at": datetime.now().isoformat(),
@@ -583,7 +585,6 @@ async def process_email(
         "citations": draft_result.get("citations", {}),
         "qa_blocks": tfl_qa,
         "tfl_refs": tfl_refs,
-        "tfl_deadline": tfl_deadline,
         "selected_cases": selected_cases,
         "status": "new",
     }
