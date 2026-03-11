@@ -92,12 +92,10 @@ Vrni ta JSON:
   "nujnost": <0.0–1.0, kjer 1.0 = izjemno nujno>,
   "profit": <ocena zaslužka v EUR, celo število>,
   "rok": {{
-    "nujno": <true/false>,
-    "cas_dni": <efektivni rok v dnevih — MINIMUM med zakonskim in strankinim — ali null>,
-    "opis": "<kratek opis: npr. 'Zakonski rok (GDPR 72h) poteče čez 1 dan; stranka želi 14 dni' ali null>",
-    "zakonski_limit_dni": <skupen zakonski limit v dnevih ali null — npr. 72h = 3>,
-    "preteklo_dni": <koliko dni je že preteklo od sprožitvenega dogodka ali null>,
-    "stranka_cas_dni": <rok ki ga navaja stranka v dnevih ali null>
+    "nujno": <true/false — ali obstaja kakršenkoli rok>,
+    "stranka_cas_dni": <koliko dni ima stranka po lastnih besedah ali null>,
+    "preteklo_dni": <koliko dni je že preteklo od sprožitvenega dogodka omenjenega v mailu ali null>,
+    "opis": "<1 stavek: opis konteksta roka — kaj je sprožilni dogodek, kaj je stranka omenila>"
   }},
   "entitete": {{
     "stranke": ["<ime podjetja ali osebe — stranka ki piše>"],
@@ -111,12 +109,7 @@ Vrni ta JSON:
   "aml_razlaga": "<1–2 stavka: zakaj takšna ocena AML tveganja — navedi konkretne indikatorje: jurisdikcija, izvor sredstev, lastniška struktura, vrsta posla>"
 }}
 
-⚠️ ROK — OBVEZNO: "cas_dni" mora biti MINIMUM med zakonskim in strankinim rokom.
-- Določi zakonski rok: npr. GDPR = 72h = 3 dni od incidenta, ZPP = 30 dni od vročitve, M&A FDI = 30 dni od prijave ipd.
-- Odštej že pretekle dni od sprožitvenega dogodka (preteklo_dni) od zakonskega limita → dobiš preostale zakonske dni.
-- Primerjaj s strankinim rokom (stranka_cas_dni) → cas_dni = min(zakonski_preostali, stranka_cas_dni).
-- Če nobeden ni znan, vrni null.
-
+⚠️ ROK: Ekstrahiraj SAMO kar piše v mailu — ne ugibaj zakonodaje. Zakonski rok bo določen posebej.
 ⚠️ Vrni SAMO JSON brez kakršnega koli besedila zunaj JSON objekta."""
 
     resp = openai_client.chat.completions.create(
@@ -369,6 +362,29 @@ def tfl_generate_aml_checklist(
     return _parse_numbered_list(result["answer"])[:12]
 
 
+def tfl_get_statutory_deadline(legal_field: str, summary: str) -> dict:
+    """Ask TFL for the statutory deadline (in days) for this type of matter.
+    Returns {days: int|None, basis: str, sources: []}."""
+    question = (
+        f"Za pravno zadevo s področja '{legal_field}': {summary}\n\n"
+        "Kateri je najkrajši obvezni zakonski rok, ki ga določa slovensko pravo za tovrstno zadevo "
+        "(npr. od sprožilnega dogodka do izpolnitve obveznosti)?\n"
+        "Odgovori OBVEZNO v tem formatu in samo tako:\n"
+        "ROK: [število] dni | OSNOVA: [zakon in člen]\n"
+        "Primer: ROK: 72 dni | OSNOVA: GDPR čl. 33\n"
+        "Če zakonskega roka ni: ROK: ni | OSNOVA: -"
+    )
+    result = tfl_ask(question, max_tokens=200)
+    answer = result["answer"]
+    m = re.search(r'ROK:\s*(\d+)\s*dni', answer, re.IGNORECASE)
+    basis_m = re.search(r'OSNOVA:\s*(.+)', answer, re.IGNORECASE)
+    return {
+        "days": int(m.group(1)) if m else None,
+        "basis": basis_m.group(1).strip() if basis_m else "",
+        "sources": result["sources"][:2],
+    }
+
+
 _TFL_URL_MAP = {
     "legislation": "/Zakonodaja/Podrobnosti/{}",
     "court":       "/SodnaPraksa/Podrobnosti/{}",
@@ -604,15 +620,36 @@ async def process_email(
     tfl_questions: list[str] = []
     tfl_aml_checklist: list[str] = []
     tfl_refs: list = []
+    tfl_statutory: dict = {}
 
     if TFL_API_KEY:
-        with ThreadPoolExecutor(max_workers=3) as pool:
+        with ThreadPoolExecutor(max_workers=4) as pool:
             fut_q   = pool.submit(tfl_generate_questions, legal_field, povzetek, jezik)
             fut_aml = pool.submit(tfl_generate_aml_checklist, legal_field, povzetek, entitete, aml_level, jezik)
             fut_ref = pool.submit(tfl_search, povzetek, ["act", "court"])
+            fut_rok = pool.submit(tfl_get_statutory_deadline, legal_field, povzetek)
             tfl_questions      = fut_q.result()
             tfl_aml_checklist  = fut_aml.result()
             tfl_refs           = fut_ref.result()
+            tfl_statutory      = fut_rok.result()
+
+    # Compute effective deadline: min(statutory_remaining, client_days)
+    rok_raw = analysis.get("rok", {})
+    statutory_days  = tfl_statutory.get("days")       # total legal period
+    preteklo        = rok_raw.get("preteklo_dni")      # days already elapsed
+    stranka_days    = rok_raw.get("stranka_cas_dni")   # what client said
+    zakonski_preostali = (statutory_days - preteklo) if (statutory_days and preteklo is not None) else statutory_days
+    candidates = [d for d in [zakonski_preostali, stranka_days] if d is not None and d > 0]
+    cas_dni = min(candidates) if candidates else None
+    analysis["rok"] = {
+        **rok_raw,
+        "cas_dni": cas_dni,
+        "zakonski_limit_dni": statutory_days,
+        "zakonski_osnova": tfl_statutory.get("basis", ""),
+        "zakonski_preostali": zakonski_preostali,
+    }
+    if cas_dni is not None:
+        analysis["rok"]["nujno"] = True
 
     # Store TFL-generated data back into analysis
     analysis["dodatna_vprasanja"] = tfl_questions

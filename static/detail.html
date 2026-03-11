@@ -791,14 +791,13 @@
       const lbl = document.getElementById('deadline-label');
       lbl.textContent = rok.cas_dni === 1 ? 'Manj kot 1 dan' : `${rok.cas_dni} dni`;
       lbl.className = `font-semibold text-sm ${urgent ? 'text-red-600' : 'text-amber-700'}`;
-      // Show breakdown if both components are known
-      let desc = rok.opis || '';
-      if (rok.zakonski_limit_dni != null && rok.stranka_cas_dni != null) {
-        const zakonski_preostanek = rok.zakonski_limit_dni - (rok.preteklo_dni || 0);
-        desc = `Zakonski preostanek: ${zakonski_preostanek} dni · Stranka: ${rok.stranka_cas_dni} dni`;
-        if (rok.opis) desc += ` — ${rok.opis}`;
-      }
-      document.getElementById('deadline-desc').textContent = desc;
+      // Show breakdown
+      const parts = [];
+      if (rok.zakonski_preostali != null) parts.push(`Zakonski preostanek: ${rok.zakonski_preostali} dni`);
+      if (rok.stranka_cas_dni != null)    parts.push(`Stranka: ${rok.stranka_cas_dni} dni`);
+      if (rok.zakonski_osnova)            parts.push(rok.zakonski_osnova);
+      if (rok.opis && !parts.length)      parts.push(rok.opis);
+      document.getElementById('deadline-desc').textContent = parts.join(' · ');
     }
 
     // ── Metrics ───────────────────────────────────────────────────────────────
