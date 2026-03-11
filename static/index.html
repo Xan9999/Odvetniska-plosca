@@ -1,52 +1,92 @@
 <!DOCTYPE html>
-<html lang="sl">
+<html lang="sl" class="jp-theme">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Jadek &amp; Pensa — Prejeta pošta</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/theme.css" />
   <style>
     .card-hover { transition: box-shadow 0.15s, transform 0.15s; }
     .card-hover:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.10); transform: translateY(-1px); }
     .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
   </style>
 </head>
-<body class="bg-slate-50 min-h-screen font-sans">
+<body class="h-full flex flex-col">
 
-  <header class="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
-    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+  <header class="h-14 bg-white flex items-center border-b border-slate-200 sticky top-0 z-20">
+    <div class="w-full px-6 flex items-center justify-between">
       <div class="flex items-center gap-3">
         <div class="w-8 h-8 bg-slate-800 rounded-lg flex items-center justify-center">
           <span class="text-white text-sm font-bold">J</span>
         </div>
         <div>
           <h1 class="text-slate-900 font-semibold text-base leading-tight">Jadek &amp; Pensa</h1>
-          <p class="text-slate-400 text-xs">Sistem za sprejem strank</p>
+          <p class="text-slate-500 text-sm leading-tight">Sistem za sprejem strank</p>
         </div>
       </div>
+      <nav class="hidden md:flex gap-4 text-sm font-medium">
+        <a href="#" class="text-slate-900 border-b border-indigo-600 pb-2">Prejeta pošta</a>
+        <a href="#" class="text-slate-500 hover:text-slate-900 pb-2 transition-all">Arhiv</a>
+        <a href="#" class="text-slate-500 hover:text-slate-900 pb-2 transition-all">Nastavitve</a>
+      </nav>
       <div class="flex items-center gap-3">
         <button onclick="deleteAll()"
-          class="text-xs text-red-400 hover:text-red-600 border border-red-200 hover:border-red-300 px-3 py-1.5 rounded-md transition-colors">
+          class="vs-btn-outline">
           Zbriši vse
         </button>
         <button onclick="openModal()"
-          class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+          class="vs-btn flex items-center gap-2">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
           </svg>
-          Nov mail
+          + Nova analiza
         </button>
       </div>
     </div>
   </header>
 
-  <main class="max-w-6xl mx-auto px-6 py-8">
-    <div class="flex items-center justify-between mb-6">
-      <h2 class="text-slate-800 font-semibold text-lg">Poizvedbe strank
-        <span id="count-badge" class="ml-2 bg-slate-100 text-slate-500 text-xs font-medium px-2 py-0.5 rounded-full"></span>
-      </h2>
-      <p class="text-slate-400 text-sm">Razvrščeno po oceni profitabilnosti</p>
+  <!-- Filter Bar -->
+  <div class="bg-white px-6 py-3 flex flex-wrap gap-3 items-center border-b border-slate-200">
+    <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg w-full max-w-md">
+      <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      <input id="filter-search" type="text" placeholder="Išči po stranki, zadevi..." class="bg-transparent border-none outline-none text-sm w-full text-slate-800 placeholder:text-slate-400">
     </div>
+
+    <div class="flex gap-2 flex-wrap items-center">
+      <select id="filter-urgency" class="bg-white text-sm px-2.5 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-500">
+        <option value="all">Vsa nujnost</option>
+        <option value="deadline">Rok (nujno)</option>
+        <option value="urgent">Nujno</option>
+      </select>
+      <select id="filter-conflict" class="bg-white text-sm px-2.5 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-500">
+        <option value="all">Konflikt (vsi)</option>
+        <option value="ok">Ni konflikta</option>
+        <option value="tveganje">Preverite</option>
+        <option value="konflikt">KONFLIKT</option>
+      </select>
+      <select id="filter-profit" class="bg-white text-sm px-2.5 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-500">
+        <option value="all">Vrednost (vse)</option>
+        <option value="gt10000">&gt; 10.000 €</option>
+        <option value="1k-10k">1.000 - 10.000 €</option>
+        <option value="lt1000">&lt; 1.000 €</option>
+      </select>
+      <select id="sort-by" class="bg-white text-sm px-2.5 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-500">
+        <option value="urgency_profit">Razvrsti: Nujnost → Profit</option>
+        <option value="profit_desc">Razvrsti: Profit (padajoče)</option>
+        <option value="profit_asc">Razvrsti: Profit (naraščajoče)</option>
+      </select>
+    </div>
+  </div>
+
+  <main class="flex-1 overflow-auto custom-scroll">
+    <div class="px-6 py-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-slate-900 font-semibold text-base tracking-wide uppercase">Poizvedbe strank
+          <span id="count-badge" class="ml-2 badge border border-slate-200 text-slate-500"></span>
+        </h2>
+        <p id="sort-hint" class="text-slate-500 text-sm">Razvrščeno po nujnosti in profitu</p>
+      </div>
 
     <div id="loading-state" class="hidden text-center py-16 text-slate-400">
       <svg class="w-8 h-8 mx-auto mb-3 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -67,7 +107,24 @@
       <p class="text-slate-400 text-sm mt-1">Dodajte prvi mail s klikom na "Nov mail"</p>
     </div>
 
-    <div id="cards-grid" class="grid gap-4 grid-cols-1 lg:grid-cols-2"></div>
+    <div class="overflow-x-auto border border-slate-200 rounded-xl bg-white">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th class="pl-6">Stranka / Pošiljatelj</th>
+            <th>Zadeva</th>
+            <th>Področje</th>
+            <th>Vrednost</th>
+            <th>AML</th>
+            <th>Konflikt</th>
+            <th>Nujnost</th>
+            <th class="pr-6 text-right">Prejeto</th>
+          </tr>
+        </thead>
+        <tbody id="cards-grid"></tbody>
+      </table>
+    </div>
+    </div>
   </main>
 
   <!-- Modal -->
@@ -142,6 +199,177 @@
     const CONFLICT_DOT = { ok: 'bg-green-500', tveganje: 'bg-amber-500', konflikt: 'bg-red-500' };
     const AML_COLOR = { nizko: 'text-green-600', srednje: 'text-amber-600', visoko: 'text-red-600' };
 
+    let ALL_EMAILS = [];
+    let _filterTimer = null;
+
+    function esc(v) {
+      return String(v ?? '')
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/\"/g,'&quot;')
+        .replace(/'/g,'&#39;');
+    }
+
+    function profitNum(e) {
+      const n = Number(e?.profit ?? 0);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function createdMs(e) {
+      const t = Date.parse(e?.created_at ?? '');
+      return Number.isFinite(t) ? t : 0;
+    }
+
+    function urgencyKey(e) {
+      const days = e?.rok?.cas_dni;
+      if (e?.rok?.nujno && days != null && Number.isFinite(Number(days))) {
+        return { group: 0, value: Number(days) }; // smaller days = more urgent
+      }
+      const n = Number(e?.nujnost ?? 0);
+      return { group: 1, value: - (Number.isFinite(n) ? n : 0) }; // higher nujnost = more urgent
+    }
+
+    function urgencyCell(e) {
+      if (e?.rok?.nujno && e?.rok?.cas_dni != null) {
+        const d = Number(e.rok.cas_dni);
+        const cls = d <= 1 ? 'urgency-high font-bold' : d <= 3 ? 'urgency-medium font-semibold' : 'urgency-low font-semibold';
+        const label = d === 1 ? 'Manj kot 1 dan' : `${d} dni`;
+        return `<span class="${cls} font-bold">● ${esc(label)}</span>`;
+      }
+      if ((Number(e?.nujnost ?? 0) || 0) >= 0.8) {
+        return `<span class="urgency-high font-bold">● NUJNO</span>`;
+      }
+      return `<span class="text-slate-400">—</span>`;
+    }
+
+    function rowMatchesFilters(e) {
+      const q = (document.getElementById('filter-search')?.value ?? '').trim().toLowerCase();
+      const fUrg = document.getElementById('filter-urgency')?.value ?? 'all';
+      const fCon = document.getElementById('filter-conflict')?.value ?? 'all';
+      const fPro = document.getElementById('filter-profit')?.value ?? 'all';
+
+      if (q) {
+        const hay = [
+          e?.sender?.name, e?.sender?.email, e?.sender?.subject,
+          e?.legal_field, e?.povzetek,
+        ].map(x => String(x ?? '').toLowerCase()).join(' ');
+        if (!hay.includes(q)) return false;
+      }
+
+      if (fCon !== 'all' && String(e?.conflict_status ?? '') !== fCon) return false;
+
+      const p = profitNum(e);
+      if (fPro === 'gt10000' && !(p > 10000)) return false;
+      if (fPro === '1k-10k' && !(p >= 1000 && p <= 10000)) return false;
+      if (fPro === 'lt1000' && !(p < 1000)) return false;
+
+      if (fUrg === 'deadline' && !e?.rok?.nujno) return false;
+      if (fUrg === 'urgent') {
+        const isDeadlineSoon = e?.rok?.nujno && e?.rok?.cas_dni != null && Number(e.rok.cas_dni) <= 3;
+        const isHigh = (Number(e?.nujnost ?? 0) || 0) >= 0.8;
+        if (!isDeadlineSoon && !isHigh) return false;
+      }
+
+      return true;
+    }
+
+    function sortEmails(emails) {
+      const mode = document.getElementById('sort-by')?.value ?? 'urgency_profit';
+      const hint = document.getElementById('sort-hint');
+      if (hint) {
+        hint.textContent =
+          mode === 'profit_desc' ? 'Razvrščeno po profitu (padajoče)' :
+          mode === 'profit_asc'  ? 'Razvrščeno po profitu (naraščajoče)' :
+          'Razvrščeno po nujnosti in profitu';
+      }
+
+      const copy = emails.slice();
+      if (mode === 'profit_desc') {
+        copy.sort((a,b) => (profitNum(b) - profitNum(a)) || (createdMs(b) - createdMs(a)));
+        return copy;
+      }
+      if (mode === 'profit_asc') {
+        copy.sort((a,b) => (profitNum(a) - profitNum(b)) || (createdMs(b) - createdMs(a)));
+        return copy;
+      }
+
+      copy.sort((a,b) => {
+        const ak = urgencyKey(a), bk = urgencyKey(b);
+        if (ak.group !== bk.group) return ak.group - bk.group;
+        if (ak.value !== bk.value) return ak.value - bk.value;
+        const dp = profitNum(b) - profitNum(a);
+        if (dp) return dp;
+        return createdMs(b) - createdMs(a);
+      });
+      return copy;
+    }
+
+    function renderRow(e) {
+      const cConf = CONFLICT_COLORS[e.conflict_status] || CONFLICT_COLORS.ok;
+      const cDot  = CONFLICT_DOT[e.conflict_status]   || CONFLICT_DOT.ok;
+      const cAml  = AML_COLOR[e.aml_tveganje]         || 'text-slate-500';
+      const date  = new Date(e.created_at).toLocaleDateString('sl-SI', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+
+      return `
+        <tr class="cursor-pointer" onclick="window.location.href='/detail?id=${encodeURIComponent(e.id)}'">
+          <td class="pl-6">
+            <div class="font-semibold text-slate-900">${esc(e.sender?.name || 'Neznano')}</div>
+            <div class="text-xs text-slate-500">${esc(e.sender?.email || '')}</div>
+          </td>
+          <td>
+            <div class="max-w-[520px] truncate text-slate-800">${esc(e.sender?.subject || '')}</div>
+            <div class="max-w-[520px] truncate text-sm text-slate-500">${esc(e.povzetek || '')}</div>
+          </td>
+          <td><span class="text-indigo-700 font-mono text-sm">${esc(e.legal_field || '')}</span></td>
+          <td><span class="text-slate-900 font-mono font-bold text-sm">${profitNum(e).toLocaleString('sl-SI')} €</span></td>
+          <td><span class="text-xs font-semibold ${cAml}">${esc(e.aml_tveganje || '')}</span></td>
+          <td>
+            <span class="text-xs border px-2 py-0.5 rounded-md ${cConf}">
+              <span class="status-dot ${cDot} mr-1"></span>${esc(CONFLICT_LABELS[e.conflict_status] || CONFLICT_LABELS.ok)}
+            </span>
+          </td>
+          <td>${urgencyCell(e)}</td>
+          <td class="pr-6 text-right text-slate-500">${esc(date)}</td>
+        </tr>`;
+    }
+
+    function applyAndRender() {
+      const grid  = document.getElementById('cards-grid');
+      const empty = document.getElementById('empty-state');
+
+      const filtered = ALL_EMAILS.filter(rowMatchesFilters);
+      const sorted = sortEmails(filtered);
+
+      const badge = document.getElementById('count-badge');
+      if (badge) badge.textContent = `${sorted.length}/${ALL_EMAILS.length}`;
+
+      if (!sorted.length) {
+        if (empty) empty.classList.remove('hidden');
+        if (grid) grid.innerHTML = '';
+        return;
+      }
+      if (empty) empty.classList.add('hidden');
+      if (grid) grid.innerHTML = sorted.map(renderRow).join('');
+    }
+
+    function setupControls() {
+      const ids = ['filter-search', 'filter-urgency', 'filter-conflict', 'filter-profit', 'sort-by'];
+      for (const id of ids) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        const handler = () => {
+          if (id === 'filter-search') {
+            if (_filterTimer) clearTimeout(_filterTimer);
+            _filterTimer = setTimeout(applyAndRender, 120);
+          } else {
+            applyAndRender();
+          }
+        };
+        el.addEventListener(id === 'filter-search' ? 'input' : 'change', handler);
+      }
+    }
+
     function openModal()  { document.getElementById('modal').classList.remove('hidden'); }
     function closeModal() { document.getElementById('modal').classList.add('hidden'); }
     document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
@@ -151,60 +379,14 @@
       try {
         const emails = await fetch('/api/emails').then(r => r.json());
         document.getElementById('loading-state').classList.add('hidden');
-        const grid  = document.getElementById('cards-grid');
         const empty = document.getElementById('empty-state');
-        document.getElementById('count-badge').textContent = emails.length;
         if (!emails.length) { empty.classList.remove('hidden'); return; }
-        empty.classList.add('hidden');
-        grid.innerHTML = emails.map(renderCard).join('');
+        ALL_EMAILS = emails;
+        applyAndRender();
       } catch(e) {
         document.getElementById('loading-state').classList.add('hidden');
         alert('Napaka pri nalaganju: ' + e.message);
       }
-    }
-
-    function renderCard(e) {
-      const cConf = CONFLICT_COLORS[e.conflict_status] || CONFLICT_COLORS.ok;
-      const cDot  = CONFLICT_DOT[e.conflict_status]   || CONFLICT_DOT.ok;
-      const cAml  = AML_COLOR[e.aml_tveganje]         || 'text-slate-500';
-      const statusBg = e.status === 'sent' ? 'bg-green-50' : e.status === 'reviewed' ? 'bg-blue-50' : 'bg-white';
-
-      // Show time remaining instead of nujnost %
-      let urgencyHtml = '';
-      if (e.rok?.nujno && e.rok?.cas_dni != null) {
-        const cls = e.rok.cas_dni <= 1 ? 'text-red-600 font-bold' : e.rok.cas_dni <= 3 ? 'text-amber-600 font-semibold' : 'text-slate-500';
-        urgencyHtml = `<span class="${cls} text-xs flex items-center gap-1">
-          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-width="2" d="M12 6v6l4 2"/></svg>
-          ${e.rok.cas_dni === 1 ? 'Manj kot 1 dan' : e.rok.cas_dni + ' dni'}
-        </span>`;
-      } else if (e.nujnost >= 0.8) {
-        urgencyHtml = `<span class="text-red-500 text-xs font-semibold">Nujno</span>`;
-      }
-
-      const date = new Date(e.created_at).toLocaleDateString('sl-SI', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-
-      return `
-      <a href="/detail?id=${e.id}" class="block ${statusBg} border border-slate-200 rounded-xl p-5 card-hover cursor-pointer">
-        <div class="flex items-start justify-between mb-3">
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 mb-1.5 flex-wrap">
-              <span class="text-xs font-medium bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md border border-indigo-100">${e.legal_field}</span>
-              <span class="text-xs border px-2 py-0.5 rounded-md ${cConf}">
-                <span class="status-dot ${cDot} mr-1"></span>${CONFLICT_LABELS[e.conflict_status]}
-              </span>
-              <span class="text-xs ${cAml} font-medium">AML: ${e.aml_tveganje}</span>
-            </div>
-            <p class="text-slate-800 font-semibold text-sm truncate">${e.sender.name}</p>
-            <p class="text-slate-500 text-xs truncate">${e.sender.subject}</p>
-          </div>
-          <div class="text-right ml-4 shrink-0">
-            <p class="text-xl font-bold text-slate-800">${(e.profit||0).toLocaleString('sl-SI')} €</p>
-            <p class="text-xs text-slate-400">${date}</p>
-          </div>
-        </div>
-        <p class="text-slate-500 text-xs leading-relaxed line-clamp-2 mb-3">${e.povzetek}</p>
-        <div class="flex items-center justify-end">${urgencyHtml}</div>
-      </a>`;
     }
 
     function updateDropLabel(input) {
@@ -249,6 +431,7 @@
       location.reload();
     }
 
+    setupControls();
     loadEmails();
   </script>
 </body>

@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="sl">
+<html lang="sl" class="jp-theme">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Jadek &amp; Pensa — Analiza</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/theme.css" />
   <style>
     /* ── Citation sentence highlight ── */
     .cited-sentence {
@@ -143,7 +144,7 @@
 
   <!-- Header -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
-    <div class="max-w-7xl mx-auto px-6 py-3 flex items-center gap-4">
+    <div class="w-full px-6 py-3 flex items-center gap-4">
       <a href="/" class="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 text-sm shrink-0">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -170,10 +171,14 @@
   </div>
 
   <!-- Content -->
-  <div id="page-content" class="hidden max-w-7xl mx-auto px-6 py-6 flex flex-col lg:flex-row gap-6 items-start">
+  <div id="page-content" class="hidden w-full px-6 py-6">
+    <div class="w-full max-w-[1680px] mx-auto flex flex-col lg:flex-row gap-6 items-start">
 
     <!-- ── LEFT ── -->
-    <div class="flex-1 min-w-0 space-y-4">
+    <div class="flex-1 min-w-0 flex justify-center lg:order-2">
+      <div class="w-full max-w-[1280px]">
+        <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_22rem] gap-4 items-start">
+        <div class="min-w-0 space-y-4">
 
       <!-- Draft panel -->
       <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
@@ -237,6 +242,14 @@
 
       </div>
 
+      <!-- Detail panel: Q&A / Citation detail (click-triggered, persistent) -->
+      <div id="detail-panel" class="hidden bg-white border border-indigo-200 rounded-xl shadow-sm overflow-hidden">
+        <div class="px-5 py-3 border-b border-indigo-100 flex items-center justify-between bg-indigo-50">
+          <span id="detail-panel-label" class="text-xs font-semibold text-indigo-700"></span>
+          <button onclick="closeDetailPanel()" class="text-indigo-400 hover:text-indigo-700 text-lg leading-none">&times;</button>
+        </div>
+        <div id="detail-panel-body" class="px-5 py-4 text-xs text-slate-700 leading-relaxed space-y-3"></div>
+      </div>
 
       <!-- Attachments -->
       <div id="attachments-card" class="hidden bg-white border border-slate-200 rounded-xl shadow-sm px-5 py-3">
@@ -255,90 +268,100 @@
         <pre id="original-email"
           class="px-5 py-4 text-xs text-slate-500 font-mono whitespace-pre-wrap border-t border-slate-100 leading-relaxed bg-slate-50 overflow-x-auto"></pre>
       </details>
+        </div>
+
+        <aside id="insight-panel" class="space-y-4">
+          <!-- Summary / Profit -->
+          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <div class="flex items-baseline gap-2 mb-2">
+              <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Analiza zadeve</h3>
+              <span id="legal-field-badge" class="text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded px-2 py-0.5 leading-tight"></span>
+            </div>
+            <p id="summary-text" class="text-xs text-slate-600 leading-relaxed mb-3"></p>
+            <div class="space-y-2">
+              <div class="bg-slate-50 rounded-lg px-3 py-2">
+                <p class="text-xs text-slate-400 mb-0.5">Ocena zaslužka</p>
+                <p id="profit-num" class="text-sm font-bold text-slate-800"></p>
+              </div>
+              <div class="bg-slate-50 rounded-lg px-3 py-2 cursor-help" data-tooltip-key="zahtevnost_razlaga">
+                <p class="text-xs text-slate-400 mb-1">Zahtevnost</p>
+                <div class="flex items-center gap-2">
+                  <div class="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                    <div id="complexity-bar" class="h-full bg-indigo-500 rounded-full transition-all"></div>
+                  </div>
+                  <span id="complexity-num" class="text-xs font-bold text-slate-700 w-8 text-right"></span>
+                </div>
+              </div>
+              <div class="bg-slate-50 rounded-lg px-3 py-2 cursor-help" data-tooltip-key="aml_razlaga">
+                <p class="text-xs text-slate-400 mb-0.5">AML / KYC tveganje</p>
+                <p id="aml-label" class="text-sm font-semibold"></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sources -->
+          <div id="tfl-refs-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Relevantni pravni viri</h3>
+            <ul id="tfl-refs-list" class="space-y-2"></ul>
+          </div>
+
+          <!-- Questions -->
+          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Usmerjevalna vprašanja</h3>
+            <p class="text-xs text-indigo-500 mb-3">Označena se pojavijo v mailu</p>
+            <ul id="questions-list" class="space-y-2.5"></ul>
+          </div>
+
+          <!-- AML checklist -->
+          <div id="aml-checklist-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Potrebna dokumentacija (ZPPDFT-2)</h3>
+            <ul id="aml-checklist" class="space-y-2 mb-3"></ul>
+            <div class="flex gap-1.5">
+              <input id="aml-add-input" type="text" placeholder="Dodaj dokument…"
+                class="flex-1 text-xs border border-slate-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-indigo-400"
+                onkeydown="if(event.key==='Enter') addAmlItem()" />
+              <button onclick="addAmlItem()"
+                class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1.5 rounded-md transition-colors shrink-0">+</button>
+            </div>
+          </div>
+
+          <!-- TFL legal Q&A chat -->
+          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <div class="flex items-center gap-2 mb-3">
+              <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Pravna baza</h3>
+              <span class="text-xs text-slate-400 bg-slate-100 rounded px-1.5 py-0.5">Tax-Fin-Lex</span>
+            </div>
+            <div id="tfl-chat-messages" class="space-y-3 mb-3 max-h-72 overflow-y-auto"></div>
+            <div class="flex gap-1.5">
+              <input id="tfl-input" type="text" placeholder="Vprašaj pravno bazo…"
+                class="flex-1 text-xs border border-slate-200 rounded-md px-2.5 py-2 focus:outline-none focus:border-indigo-400"
+                onkeydown="if(event.key==='Enter') tflAsk()" />
+              <button onclick="tflAsk()"
+                class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-md font-medium transition-colors shrink-0">
+                Pošlji
+              </button>
+            </div>
+          </div>
+        </aside>
+        </div>
+      </div>
     </div>
 
     <!-- ── RIGHT: Dashboard ── -->
-    <div id="right-panel" class="w-full lg:w-80 xl:w-96 shrink-0 space-y-4">
+    <div id="right-panel" class="w-full lg:w-72 xl:w-80 shrink-0 space-y-4 lg:order-1">
 
       <!-- Conflict -->
       <div id="conflict-card" class="rounded-xl border p-4 shadow-sm"></div>
 
       <!-- Deadline -->
       <div id="deadline-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Rok &amp; nujnost</h3>
-        <div class="flex items-center gap-3 mb-2">
+        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Rok</h3>
+        <div class="flex items-center gap-3">
           <div id="deadline-icon" class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0">⏱</div>
           <div>
             <p id="deadline-label" class="font-semibold text-slate-800 text-sm"></p>
             <p id="deadline-desc"  class="text-xs text-slate-500 mt-0.5"></p>
           </div>
-        </div>
-        <div id="nujnost-row" class="hidden flex items-center gap-2 pt-2 border-t border-slate-100">
-          <span class="text-xs text-slate-400 shrink-0">Nujnost:</span>
-          <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-            <div id="nujnost-bar" class="h-full rounded-full transition-all"></div>
-          </div>
-          <span id="nujnost-label" class="text-xs font-semibold shrink-0"></span>
-        </div>
-      </div>
-
-      <!-- Metrics -->
-      <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-        <div class="flex items-baseline gap-2 mb-2">
-          <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Analiza zadeve</h3>
-          <span id="legal-field-badge" class="text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded px-2 py-0.5 leading-tight"></span>
-        </div>
-        <p id="summary-text" class="text-xs text-slate-600 leading-relaxed mb-3"></p>
-        <div class="space-y-2">
-          <div class="bg-slate-50 rounded-lg px-3 py-2">
-            <p class="text-xs text-slate-400 mb-0.5">Ocena zaslužka</p>
-            <p id="profit-num" class="text-sm font-bold text-slate-800"></p>
-          </div>
-          <div class="bg-slate-50 rounded-lg px-3 py-2 cursor-help" data-tooltip-key="zahtevnost_razlaga">
-            <p class="text-xs text-slate-400 mb-1">Zahtevnost</p>
-            <div class="flex items-center gap-2">
-              <div class="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                <div id="complexity-bar" class="h-full bg-indigo-500 rounded-full transition-all"></div>
-              </div>
-              <span id="complexity-num" class="text-xs font-bold text-slate-700 w-8 text-right"></span>
-            </div>
-          </div>
-          <div class="bg-slate-50 rounded-lg px-3 py-2 cursor-help" data-tooltip-key="aml_razlaga">
-            <p class="text-xs text-slate-400 mb-0.5">AML / KYC tveganje</p>
-            <p id="aml-label" class="text-sm font-semibold"></p>
-          </div>
-        </div>
-      </div>
-
-      <!-- KYC / AML detail card -->
-      <div id="kyc-aml-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-4">
-
-        <!-- KYC section -->
-        <div>
-          <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">KYC — stranke</h3>
-          <div id="kyc-entities" class="space-y-2"></div>
-        </div>
-
-        <!-- AML indicators -->
-        <div>
-          <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">AML indikatorji</h3>
-          <div id="aml-indicators" class="space-y-1"></div>
-        </div>
-
-        <!-- Overall explanation -->
-        <p id="kyc-aml-razlaga" class="text-xs text-slate-500 leading-relaxed border-t border-slate-100 pt-3"></p>
-      </div>
-
-      <!-- AML checklist -->
-      <div id="aml-checklist-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Potrebna dokumentacija (ZPPDFT-2)</h3>
-        <ul id="aml-checklist" class="space-y-2 mb-3"></ul>
-        <div class="flex gap-1.5">
-          <input id="aml-add-input" type="text" placeholder="Dodaj dokument…"
-            class="flex-1 text-xs border border-slate-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-indigo-400"
-            onkeydown="if(event.key==='Enter') addAmlItem()" />
-          <button onclick="addAmlItem()"
-            class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1.5 rounded-md transition-colors shrink-0">+</button>
         </div>
       </div>
 
@@ -404,37 +427,7 @@
         </div>
       </div>
 
-      <!-- Questions -->
-      <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Usmerjevalna vprašanja</h3>
-        <p class="text-xs text-indigo-500 mb-3">Označena se pojavijo v mailu</p>
-        <ul id="questions-list" class="space-y-2.5"></ul>
-      </div>
-
-      <!-- TFL legal references -->
-      <div id="tfl-refs-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Relevantni pravni viri</h3>
-        <ul id="tfl-refs-list" class="space-y-2"></ul>
-      </div>
-
-      <!-- TFL legal Q&A chat -->
-      <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-        <div class="flex items-center gap-2 mb-3">
-          <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Pravna baza</h3>
-          <span class="text-xs text-slate-400 bg-slate-100 rounded px-1.5 py-0.5">Tax-Fin-Lex</span>
-        </div>
-        <div id="tfl-chat-messages" class="space-y-3 mb-3 max-h-72 overflow-y-auto"></div>
-        <div class="flex gap-1.5">
-          <input id="tfl-input" type="text" placeholder="Vprašaj pravno bazo…"
-            class="flex-1 text-xs border border-slate-200 rounded-md px-2.5 py-2 focus:outline-none focus:border-indigo-400"
-            onkeydown="if(event.key==='Enter') tflAsk()" />
-          <button onclick="tflAsk()"
-            class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-md font-medium transition-colors shrink-0">
-            Pošlji
-          </button>
-        </div>
-      </div>
-
+    </div>
     </div>
   </div>
 
@@ -498,9 +491,8 @@
       document.getElementById('status-badge').innerHTML = `<span class="text-xs font-medium px-2 py-1 rounded-md ${sc}">${sl}</span>`;
 
       renderConflict(r.conflict || {});
-      renderDeadline(r.analysis?.rok || {}, r.analysis?.nujnost ?? 0);
+      renderDeadline(r.analysis?.rok || {});
       renderMetrics(r.analysis || {});
-      renderKycAml(r.analysis || {});
       renderAmlChecklist(r.analysis || {});
       renderTeamPanels();
       renderQuestionsPanel();
@@ -709,7 +701,7 @@
           showQAPanel(parseInt(qaEl.dataset.qa), qaEl);
         } else {
           removeInlineTips();
-          document.querySelectorAll('.cited-sentence,.qa-item').forEach(x => x.classList.remove('active'));
+          closeDetailPanel();
         }
       });
     }
@@ -718,13 +710,22 @@
       const cit = citations[refKey];
       if (!cit) return;
 
-      const tipHtml = `
+      const innerHtml = `
         <span class="font-semibold text-slate-700">Primer [${num}]: ${esc(cit.naslov || '')}</span>
         ${cit.leto ? ` <span class="text-slate-400">· ${cit.leto}</span>` : ''}
-        ${cit.opis  ? `<br><span class="text-slate-600">${esc(cit.opis)}</span>` : ''}
+        ${cit.opis  ? `<br>${esc(cit.opis)}` : ''}
         ${cit.izid  ? `<br><span class="text-green-700 font-medium">✓ ${esc(cit.izid)}</span>` : ''}`;
 
-      if (anchorEl) insertInlineTip(anchorEl, tipHtml, 'cite-tip');
+      if (anchorEl) insertInlineTip(anchorEl, innerHtml, 'cite-tip');
+
+      document.getElementById('detail-panel-label').textContent = `Primer [${num}]`;
+      document.getElementById('detail-panel-body').innerHTML = `
+        <p class="font-semibold text-slate-800">${esc(cit.naslov || '')}</p>
+        ${cit.leto ? `<p class="text-slate-400">Leto ${cit.leto}</p>` : ''}
+        ${cit.opis  ? `<p class="text-slate-600">${esc(cit.opis)}</p>` : ''}
+        ${cit.izid  ? `<p class="text-green-700 font-medium">✓ ${esc(cit.izid)}</p>` : ''}
+      `;
+      document.getElementById('detail-panel').classList.remove('hidden');
     }
 
     function showQAPanel(idx, anchorEl) {
@@ -732,7 +733,7 @@
       if (!qa) return;
       const srcs = qa.sources || [];
       const srcHtml = srcs.length
-        ? `<div class="mt-2 pt-2 border-t border-slate-100 space-y-1">
+        ? `<div class="pt-2 border-t border-slate-100 space-y-1">
             <p class="text-slate-400 font-medium mb-1">Viri (Tax-Fin-Lex):</p>
             ${srcs.map(s => tflSourceBtn(s)).join('')}
            </div>`
@@ -740,13 +741,21 @@
 
       const tipHtml = `
         <span class="text-slate-400 italic">${esc(qa.vprasanje || '')}</span><br>
-        <span class="text-slate-700">${esc(qa.odgovor || '')}</span>
-        ${srcHtml}`;
+        ${esc(qa.odgovor || '')}`;
 
       if (anchorEl) insertInlineTip(anchorEl, tipHtml, 'qa-tip');
+
+      document.getElementById('detail-panel-label').textContent = `Odgovor ${idx + 1}`;
+      document.getElementById('detail-panel-body').innerHTML = `
+        <p class="text-slate-400 italic mb-1">${esc(qa.vprasanje || '')}</p>
+        <p class="text-slate-700 leading-relaxed">${esc(qa.odgovor || '')}</p>
+        ${srcHtml}
+      `;
+      document.getElementById('detail-panel').classList.remove('hidden');
     }
 
     function closeDetailPanel() {
+      document.getElementById('detail-panel').classList.add('hidden');
       document.querySelectorAll('.cited-sentence,.qa-item').forEach(x => x.classList.remove('active'));
     }
 
@@ -785,46 +794,22 @@
     }
 
     // ── Deadline ──────────────────────────────────────────────────────────────
-    function renderDeadline(rok, nujnost = 0) {
-      const hasDeadline = rok?.nujno && rok?.cas_dni != null;
-      const nujnostPct = Math.round((nujnost ?? 0) * 100);
-      const showCard = hasDeadline || nujnostPct >= 20;
-      if (!showCard) return;
+    function renderDeadline(rok) {
+      if (!rok?.nujno || rok?.cas_dni == null) return;
       document.getElementById('deadline-card').classList.remove('hidden');
-
-      if (hasDeadline) {
-        const urgent = rok.cas_dni <= 1;
-        document.getElementById('deadline-icon').textContent = urgent ? '🚨' : '⏱';
-        const lbl = document.getElementById('deadline-label');
-        lbl.textContent = rok.cas_dni === 1 ? 'Manj kot 1 dan' : `${rok.cas_dni} dni`;
-        lbl.className = `font-semibold text-sm ${urgent ? 'text-red-600' : 'text-amber-700'}`;
-        const parts = [];
-        if (rok.zakonski_preostali != null) parts.push(`Zakonski preostanek: ${rok.zakonski_preostali} dni`);
-        if (rok.stranka_cas_dni != null)    parts.push(`Stranka: ${rok.stranka_cas_dni} dni`);
-        if (rok.zakonski_osnova)            parts.push(rok.zakonski_osnova);
-        if (rok.opis && !parts.length)      parts.push(rok.opis);
-        document.getElementById('deadline-desc').textContent = parts.join(' · ');
-      } else {
-        document.getElementById('deadline-icon').textContent = '📋';
-        document.getElementById('deadline-label').textContent = 'Ni določenega roka';
-        document.getElementById('deadline-label').className = 'font-semibold text-sm text-slate-500';
+      const urgent = rok.cas_dni <= 1;
+      document.getElementById('deadline-icon').textContent = urgent ? '🚨' : '⏱';
+      const lbl = document.getElementById('deadline-label');
+      lbl.textContent = rok.cas_dni === 1 ? 'Manj kot 1 dan' : `${rok.cas_dni} dni`;
+      lbl.className = `font-semibold text-sm ${urgent ? 'text-red-600' : 'text-amber-700'}`;
+      // Show breakdown if both components are known
+      let desc = rok.opis || '';
+      if (rok.zakonski_limit_dni != null && rok.stranka_cas_dni != null) {
+        const zakonski_preostanek = rok.zakonski_limit_dni - (rok.preteklo_dni || 0);
+        desc = `Zakonski preostanek: ${zakonski_preostanek} dni · Stranka: ${rok.stranka_cas_dni} dni`;
+        if (rok.opis) desc += ` — ${rok.opis}`;
       }
-
-      // Nujnost bar
-      if (nujnostPct >= 20) {
-        const cfg = nujnostPct >= 80
-          ? { cls: 'bg-red-500',    lbl: 'Kritično',   tc: 'text-red-600' }
-          : nujnostPct >= 60
-          ? { cls: 'bg-orange-400', lbl: 'Visoka',     tc: 'text-orange-600' }
-          : nujnostPct >= 40
-          ? { cls: 'bg-amber-400',  lbl: 'Srednja',    tc: 'text-amber-600' }
-          : { cls: 'bg-slate-300',  lbl: 'Nizka',      tc: 'text-slate-500' };
-        document.getElementById('nujnost-row').classList.remove('hidden');
-        document.getElementById('nujnost-bar').className = `h-full rounded-full transition-all ${cfg.cls}`;
-        document.getElementById('nujnost-bar').style.width = `${nujnostPct}%`;
-        document.getElementById('nujnost-label').textContent = `${cfg.lbl} (${nujnostPct}%)`;
-        document.getElementById('nujnost-label').className = `text-xs font-semibold shrink-0 ${cfg.tc}`;
-      }
+      document.getElementById('deadline-desc').textContent = desc;
     }
 
     // ── Metrics ───────────────────────────────────────────────────────────────
@@ -839,92 +824,6 @@
       const el = document.getElementById('aml-label');
       el.textContent = {nizko:'Nizko',srednje:'Srednje',visoko:'Visoko ⚠️'}[aml]||aml;
       el.className = `text-sm font-semibold ${AML_STYLE[aml]||''}`;
-    }
-
-    // ── KYC / AML detail card ─────────────────────────────────────────────────
-    function renderKycAml(a) {
-      const kyc = a.kyc_aml;
-      if (!kyc) return;
-      const card = document.getElementById('kyc-aml-card');
-      card.classList.remove('hidden');
-
-      // Border colour based on overall risk
-      const borderCls = { nizko: 'border-slate-200', srednje: 'border-amber-300', visoko: 'border-red-300' }[kyc.skupno_tveganje] || 'border-slate-200';
-      card.className = `bg-white border ${borderCls} rounded-xl p-4 shadow-sm space-y-4`;
-
-      // KYC entities
-      const riskDot = { nizko: 'bg-green-400', srednje: 'bg-amber-400', visoko: 'bg-red-500' };
-      const entitiesEl = document.getElementById('kyc-entities');
-      if (kyc.kyc_entitete && kyc.kyc_entitete.length) {
-        entitiesEl.innerHTML = kyc.kyc_entitete.map(e => {
-          const dot = riskDot[e.tveganje] || 'bg-slate-300';
-          const tipBadge = e.tip === 'fizična'
-            ? '<span class="text-xs bg-blue-50 text-blue-600 border border-blue-200 rounded px-1.5 py-0.5 mr-1.5">fizična</span>'
-            : '<span class="text-xs bg-purple-50 text-purple-600 border border-purple-200 rounded px-1.5 py-0.5 mr-1.5">pravna</span>';
-          const pepBadge = e.pep
-            ? '<span class="text-xs bg-red-50 text-red-600 border border-red-200 rounded px-1.5 py-0.5 mr-1.5 font-semibold">PEP</span>'
-            : '';
-          const ajpesBadge = e.lastniška_struktura && e.lastniška_struktura !== 'ni podatkov'
-            ? `<span class="text-xs bg-slate-50 text-slate-500 border border-slate-200 rounded px-1.5 py-0.5">AJPES: ${esc(e.lastniška_struktura)}</span>`
-            : '';
-          return `<div class="flex items-start gap-2 py-1.5 border-b border-slate-50 last:border-0">
-            <span class="w-2 h-2 rounded-full mt-1.5 shrink-0 ${dot}"></span>
-            <div class="flex-1 min-w-0">
-              <div class="flex flex-wrap items-center gap-1 mb-0.5">
-                ${tipBadge}${pepBadge}
-                <span class="text-xs font-medium text-slate-700">${esc(e.ime)}</span>
-              </div>
-              <div class="flex flex-wrap gap-1 mb-0.5">${ajpesBadge}</div>
-              ${e.pep_razlaga ? `<p class="text-xs text-slate-500 leading-relaxed">${esc(e.pep_razlaga)}</p>` : ''}
-              ${e.opombe ? `<p class="text-xs text-slate-400 leading-relaxed">${esc(e.opombe)}</p>` : ''}
-            </div>
-          </div>`;
-        }).join('');
-      } else {
-        entitiesEl.innerHTML = '<p class="text-xs text-slate-400">Ni entitet za preverjanje.</p>';
-      }
-
-      // AML indicators
-      const AML_TIP_LABEL = {
-        proof_of_funds: 'Izvor sredstev',
-        lastniška_struktura: 'Lastniška struktura',
-        jurisdikcija: 'Jurisdikcija',
-        gotovinska_intenzivnost: 'Gotovinska intenzivnost',
-        anonimnost: 'Zahteva po anonimnosti',
-        nujnost: 'Neutemeljena nujnost',
-        corporate_structure: 'Sumljiva korp. struktura',
-      };
-      const indEl = document.getElementById('aml-indicators');
-      if (kyc.aml_indikatorji && kyc.aml_indikatorji.length) {
-        indEl.innerHTML = kyc.aml_indikatorji.map(ind => {
-          const present = ind.prisoten;
-          const risk = ind.tveganje || 'nizko';
-          const rowCls = present
-            ? { nizko: 'bg-slate-50', srednje: 'bg-amber-50', visoko: 'bg-red-50' }[risk] || 'bg-slate-50'
-            : 'bg-white';
-          const iconCls = present
-            ? { nizko: 'text-slate-400', srednje: 'text-amber-500', visoko: 'text-red-500' }[risk]
-            : 'text-green-400';
-          const icon = present
-            ? { nizko: '●', srednje: '▲', visoko: '⚠' }[risk]
-            : '✓';
-          const label = AML_TIP_LABEL[ind.tip] || ind.tip;
-          return `<div class="flex items-start gap-2 rounded px-2 py-1.5 ${rowCls}">
-            <span class="text-xs font-bold ${iconCls} shrink-0 w-4 text-center">${icon}</span>
-            <div class="flex-1 min-w-0">
-              <span class="text-xs font-medium text-slate-700">${esc(label)}</span>
-              ${ind.opis ? `<p class="text-xs text-slate-500 leading-relaxed">${esc(ind.opis)}</p>` : ''}
-            </div>
-          </div>`;
-        }).join('');
-      } else {
-        indEl.innerHTML = '<p class="text-xs text-slate-400">Ni indikatorjev.</p>';
-      }
-
-      // Overall explanation
-      if (kyc.skupna_razlaga) {
-        document.getElementById('kyc-aml-razlaga').textContent = kyc.skupna_razlaga;
-      }
     }
 
     // ── AML checklist (editable) ───────────────────────────────────────────────
@@ -970,16 +869,20 @@
 
     // ── Tooltip (right panel) ─────────────────────────────────────────────────
     function setupTooltips() {
-      const panel = document.getElementById('right-panel');
-      panel.addEventListener('mouseover', e => {
-        const el = e.target.closest('[data-tooltip-key]');
-        if (!el) return;
-        const text = record?.analysis?.[el.dataset.tooltipKey];
-        if (text) showGTip(e, text);
-      });
-      panel.addEventListener('mousemove', e => moveGTip(e));
-      panel.addEventListener('mouseout',  e => { if (!e.target.closest('[data-tooltip-key]')) hideGTip(); });
-      panel.addEventListener('mouseleave', hideGTip);
+      const panels = ['right-panel', 'insight-panel']
+        .map(id => document.getElementById(id))
+        .filter(Boolean);
+      for (const panel of panels) {
+        panel.addEventListener('mouseover', e => {
+          const el = e.target.closest('[data-tooltip-key]');
+          if (!el) return;
+          const text = record?.analysis?.[el.dataset.tooltipKey];
+          if (text) showGTip(e, text);
+        });
+        panel.addEventListener('mousemove', e => moveGTip(e));
+        panel.addEventListener('mouseout',  e => { if (!e.target.closest('[data-tooltip-key]')) hideGTip(); });
+        panel.addEventListener('mouseleave', hideGTip);
+      }
     }
     function showGTip(e, text) { const t=document.getElementById('g-tooltip'); t.textContent=text; t.classList.remove('hidden'); moveGTip(e); }
     function moveGTip(e) { const t=document.getElementById('g-tooltip'); if(t.classList.contains('hidden'))return; t.style.left=Math.min(e.clientX+14,window.innerWidth-295)+'px'; t.style.top=(e.clientY-10)+'px'; }
@@ -1277,8 +1180,12 @@
       document.getElementById('btn-sprejmi').classList.add('opacity-40','cursor-not-allowed');
       document.getElementById('btn-zavrni').classList.add('opacity-40','cursor-not-allowed');
 
-      // Gray out right panel
+      // Gray out side panels and detail panel
       document.getElementById('right-panel').classList.add('edit-mode-locked');
+      const ip = document.getElementById('insight-panel');
+      if (ip) ip.classList.add('edit-mode-locked');
+      const dp = document.getElementById('detail-panel');
+      if (dp) dp.classList.add('hidden');
       removeInlineTips();
 
       // Add edit mode banner
@@ -1461,16 +1368,9 @@
       const icon = s.type === 'court' ? '⚖️' : '📄';
       const id = s.entityId || s.id || '';
       const type = s.type === 'court' ? 'court' : 'legislation';
-      // is_valid: undefined = unknown, true = valid, false = no longer valid
-      const invalidBadge = s.is_valid === false
-        ? '<span class="ml-1 text-red-500 font-semibold">[neveljavno]</span>'
-        : '';
-      const titleCls = s.is_valid === false
-        ? 'line-through text-slate-400'
-        : 'text-blue-600 hover:text-blue-800 hover:underline';
       return `<button onclick="openTflExternal('${id}','${type}',this)"
-        class="block text-left text-xs ${titleCls} leading-snug w-full truncate" ${s.is_valid === false ? 'title="Ta predpis ni več veljaven"' : ''}>
-        ${icon} ${esc(s.title)}${invalidBadge}
+        class="block text-left text-xs text-blue-600 hover:text-blue-800 hover:underline leading-snug w-full truncate">
+        ${icon} ${esc(s.title)}
       </button>`;
     }
 
