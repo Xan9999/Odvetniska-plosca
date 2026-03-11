@@ -299,20 +299,7 @@
             </div>
           </div>
 
-          <!-- Sources -->
-          <div id="tfl-refs-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-            <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Relevantni pravni viri</h3>
-            <ul id="tfl-refs-list" class="space-y-2"></ul>
-          </div>
-
-          <!-- Questions -->
-          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-            <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Usmerjevalna vprašanja</h3>
-            <p class="text-xs text-indigo-500 mb-3">Označena se pojavijo v mailu</p>
-            <ul id="questions-list" class="space-y-2.5"></ul>
-          </div>
-
-          <!-- AML checklist -->
+          <!-- AML checklist (dokumentacija) -->
           <div id="aml-checklist-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
             <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Potrebna dokumentacija (ZPPDFT-2)</h3>
             <ul id="aml-checklist" class="space-y-2 mb-3"></ul>
@@ -325,15 +312,28 @@
             </div>
           </div>
 
-          <!-- TFL legal Q&A chat -->
+          <!-- Questions (vprašanja) -->
+          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Usmerjevalna vprašanja</h3>
+            <p class="text-xs text-indigo-500 mb-3">Označena se pojavijo v mailu</p>
+            <ul id="questions-list" class="space-y-2.5"></ul>
+          </div>
+
+          <!-- Sources (viri) -->
+          <div id="tfl-refs-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Relevantni pravni viri</h3>
+            <ul id="tfl-refs-list" class="space-y-2"></ul>
+          </div>
+
+          <!-- AI pomoč (TFL chat) -->
           <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
             <div class="flex items-center gap-2 mb-3">
-              <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Pravna baza</h3>
+              <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide">AI pomoč</h3>
               <span class="text-xs text-slate-400 bg-slate-100 rounded px-1.5 py-0.5">Tax-Fin-Lex</span>
             </div>
             <div id="tfl-chat-messages" class="space-y-3 mb-3 max-h-72 overflow-y-auto"></div>
             <div class="flex gap-1.5">
-              <input id="tfl-input" type="text" placeholder="Vprašaj pravno bazo…"
+              <input id="tfl-input" type="text" placeholder="Vprašaj AI pomoč…"
                 class="flex-1 text-xs border border-slate-200 rounded-md px-2.5 py-2 focus:outline-none focus:border-indigo-400"
                 onkeydown="if(event.key==='Enter') tflAsk()" />
               <button onclick="tflAsk()"
@@ -355,13 +355,20 @@
 
       <!-- Deadline -->
       <div id="deadline-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Rok</h3>
-        <div class="flex items-center gap-3">
+        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Rok &amp; nujnost</h3>
+        <div class="flex items-center gap-3 mb-2">
           <div id="deadline-icon" class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0">⏱</div>
           <div>
             <p id="deadline-label" class="font-semibold text-slate-800 text-sm"></p>
             <p id="deadline-desc"  class="text-xs text-slate-500 mt-0.5"></p>
           </div>
+        </div>
+        <div id="nujnost-row" class="hidden flex items-center gap-2 pt-2 border-t border-slate-100">
+          <span class="text-xs text-slate-400 shrink-0">Nujnost:</span>
+          <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div id="nujnost-bar" class="h-full rounded-full transition-all"></div>
+          </div>
+          <span id="nujnost-label" class="text-xs font-semibold shrink-0"></span>
         </div>
       </div>
 
@@ -491,7 +498,7 @@
       document.getElementById('status-badge').innerHTML = `<span class="text-xs font-medium px-2 py-1 rounded-md ${sc}">${sl}</span>`;
 
       renderConflict(r.conflict || {});
-      renderDeadline(r.analysis?.rok || {});
+      renderDeadline(r.analysis?.rok || {}, r.analysis?.nujnost ?? 0);
       renderMetrics(r.analysis || {});
       renderAmlChecklist(r.analysis || {});
       renderTeamPanels();
@@ -794,22 +801,45 @@
     }
 
     // ── Deadline ──────────────────────────────────────────────────────────────
-    function renderDeadline(rok) {
-      if (!rok?.nujno || rok?.cas_dni == null) return;
+    function renderDeadline(rok, nujnost = 0) {
+      const hasDeadline = rok?.nujno && rok?.cas_dni != null;
+      const nujnostPct = Math.round((nujnost ?? 0) * 100);
+      if (!hasDeadline && nujnostPct < 20) return;
       document.getElementById('deadline-card').classList.remove('hidden');
-      const urgent = rok.cas_dni <= 1;
-      document.getElementById('deadline-icon').textContent = urgent ? '🚨' : '⏱';
-      const lbl = document.getElementById('deadline-label');
-      lbl.textContent = rok.cas_dni === 1 ? 'Manj kot 1 dan' : `${rok.cas_dni} dni`;
-      lbl.className = `font-semibold text-sm ${urgent ? 'text-red-600' : 'text-amber-700'}`;
-      // Show breakdown if both components are known
-      let desc = rok.opis || '';
-      if (rok.zakonski_limit_dni != null && rok.stranka_cas_dni != null) {
-        const zakonski_preostanek = rok.zakonski_limit_dni - (rok.preteklo_dni || 0);
-        desc = `Zakonski preostanek: ${zakonski_preostanek} dni · Stranka: ${rok.stranka_cas_dni} dni`;
-        if (rok.opis) desc += ` — ${rok.opis}`;
+
+      if (hasDeadline) {
+        const urgent = rok.cas_dni <= 1;
+        document.getElementById('deadline-icon').textContent = urgent ? '🚨' : '⏱';
+        const lbl = document.getElementById('deadline-label');
+        lbl.textContent = rok.cas_dni === 1 ? 'Manj kot 1 dan' : `${rok.cas_dni} dni`;
+        lbl.className = `font-semibold text-sm ${urgent ? 'text-red-600' : 'text-amber-700'}`;
+        let desc = rok.opis || '';
+        if (rok.zakonski_limit_dni != null && rok.stranka_cas_dni != null) {
+          const zakonski_preostanek = rok.zakonski_limit_dni - (rok.preteklo_dni || 0);
+          desc = `Zakonski preostanek: ${zakonski_preostanek} dni · Stranka: ${rok.stranka_cas_dni} dni`;
+          if (rok.opis) desc += ` — ${rok.opis}`;
+        }
+        document.getElementById('deadline-desc').textContent = desc;
+      } else {
+        document.getElementById('deadline-icon').textContent = '📋';
+        document.getElementById('deadline-label').textContent = 'Ni določenega roka';
+        document.getElementById('deadline-label').className = 'font-semibold text-sm text-slate-500';
       }
-      document.getElementById('deadline-desc').textContent = desc;
+
+      if (nujnostPct >= 20) {
+        const cfg = nujnostPct >= 80
+          ? { cls: 'bg-red-500',    lbl: 'Kritično',  tc: 'text-red-600' }
+          : nujnostPct >= 60
+          ? { cls: 'bg-orange-400', lbl: 'Visoka',    tc: 'text-orange-600' }
+          : nujnostPct >= 40
+          ? { cls: 'bg-amber-400',  lbl: 'Srednja',   tc: 'text-amber-600' }
+          : { cls: 'bg-slate-300',  lbl: 'Nizka',     tc: 'text-slate-500' };
+        document.getElementById('nujnost-row').classList.remove('hidden');
+        document.getElementById('nujnost-bar').className = `h-full rounded-full transition-all ${cfg.cls}`;
+        document.getElementById('nujnost-bar').style.width = `${nujnostPct}%`;
+        document.getElementById('nujnost-label').textContent = `${cfg.lbl} (${nujnostPct}%)`;
+        document.getElementById('nujnost-label').className = `text-xs font-semibold shrink-0 ${cfg.tc}`;
+      }
     }
 
     // ── Metrics ───────────────────────────────────────────────────────────────
@@ -1491,6 +1521,34 @@
     }
 
     // ── TFL chat ──────────────────────────────────────────────────────────────
+    function buildTflCaseContext() {
+      if (!record) return '';
+      const a = record.analysis || {};
+      const ent = a.entitete || {};
+      const rok = a.rok || {};
+      const kyc = a.kyc_aml || {};
+      const parts = ['=== KONTEKST ZADEVE ==='];
+      if (a.legal_field)  parts.push(`Področje: ${a.legal_field}`);
+      if (a.tip_stranke)  parts.push(`Tip stranke: ${a.tip_stranke}`);
+      const stranke = [...(ent.stranke||[]), ...(ent.nasprotna_stran||[]), ...(ent.ostali_upleteni||[])];
+      if (stranke.length) parts.push(`Stranke: ${stranke.join(', ')}`);
+      if (a.povzetek)     parts.push(`Povzetek: ${a.povzetek}`);
+      if (a.zahtevnost)   parts.push(`Zahtevnost: ${a.zahtevnost}/10`);
+      if (a.aml_tveganje) parts.push(`AML tveganje: ${a.aml_tveganje}`);
+      const rokParts = [];
+      if (rok.preteklo_dni != null)    rokParts.push(`preteklo ${rok.preteklo_dni} dni`);
+      if (rok.cas_dni != null)         rokParts.push(`preostalo ${rok.cas_dni} dni`);
+      if (rok.zakonski_osnova)         rokParts.push(rok.zakonski_osnova);
+      if (rok.opis)                    rokParts.push(rok.opis);
+      if (rokParts.length)             parts.push(`Rok: ${rokParts.join(' · ')}`);
+      const pepFlags = (kyc.kyc_entitete||[]).filter(e=>e.pep).map(e=>e.ime);
+      if (pepFlags.length)             parts.push(`PEP: ${pepFlags.join(', ')}`);
+      const activeAml = (kyc.aml_indikatorji||[]).filter(i=>i.prisoten).map(i=>i.tip);
+      if (activeAml.length)            parts.push(`AML indikatorji: ${activeAml.join(', ')}`);
+      parts.push('======================');
+      return parts.join('\n') + '\n\n';
+    }
+
     async function tflAsk() {
       const input = document.getElementById('tfl-input');
       const q = input.value.trim();
@@ -1521,7 +1579,7 @@
         const res = await fetch('/api/tfl/ask', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ question: q }),
+          body: JSON.stringify({ question: buildTflCaseContext() + q }),
         });
 
         const ansEl = document.getElementById(answerId);
