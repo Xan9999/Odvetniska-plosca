@@ -435,6 +435,72 @@ RELEVANTNI DELI EMAILA:
 
 # ── Tax-Fin-Lex integration ───────────────────────────────────────────────────
 
+def _tfl_context_block(analysis: dict, ajpes_data: dict | None = None, kyc_aml: dict | None = None) -> str:
+    """Build a concise context prefix for TFL questions so the AI has full case context."""
+    ent = analysis.get("entitete", {})
+    stranke   = ", ".join(ent.get("stranke", [])) or "—"
+    nasprotna = ", ".join(ent.get("nasprotna_stran", [])) or "—"
+    ostali    = ", ".join(ent.get("ostali_upleteni", [])) or "—"
+
+    rok = analysis.get("rok", {})
+    rok_parts = []
+    if rok.get("preteklo_dni") is not None:
+        rok_parts.append(f"{rok['preteklo_dni']} dni preteklo od dogodka")
+    if rok.get("cas_dni") is not None:
+        rok_parts.append(f"{rok['cas_dni']} dni preostalo")
+    if rok.get("opis"):
+        rok_parts.append(rok["opis"])
+    rok_str = "; ".join(rok_parts) if rok_parts else "ni konkretnega roka"
+
+    hrj = _detect_high_risk_jurisdiction(
+        " ".join(ent.get("stranke", []) + ent.get("nasprotna_stran", []) + ent.get("ostali_upleteni", []))
+    )
+    jurisd = ", ".join(hrj) if hrj else "—"
+
+    lines = [
+        "=== KONTEKST ZADEVE ===",
+        f"Pravno področje: {analysis.get('legal_field', '—')}",
+        f"Tip stranke: {analysis.get('tip_stranke', '—')}",
+        f"Stranka: {stranke}",
+        f"Nasprotna stran: {nasprotna}",
+        f"Ostali vpleteni: {ostali}",
+        f"Povzetek: {analysis.get('povzetek', '—')}",
+        f"Zahtevnost: {analysis.get('zahtevnost', '—')}/10",
+        f"Rok: {rok_str}",
+        f"Visokorizične jurisdikcije: {jurisd}",
+        f"AML tveganje: {analysis.get('aml_tveganje', '—')}",
+    ]
+
+    # AJPES summary — key ownership/director facts per entity
+    if ajpes_data:
+        ajpes_lines = []
+        for name, aj in ajpes_data.items():
+            if not aj:
+                continue
+            zast = ", ".join(str(z) for z in aj.get("zastopniki", [])[:3]) or "—"
+            last = ", ".join(str(o) for o in aj.get("lastniki", [])[:3]) or "—"
+            ajpes_lines.append(
+                f"  {name}: dejavnost={aj.get('dejavnost','?')}, "
+                f"zastopniki=[{zast}], lastniki=[{last}]"
+            )
+        if ajpes_lines:
+            lines.append("AJPES podatki:\n" + "\n".join(ajpes_lines))
+
+    # KYC highlights — PEP flags and entity risks
+    if kyc_aml:
+        pep_flags = [e["ime"] for e in kyc_aml.get("kyc_entitete", []) if e.get("pep")]
+        high_risk = [e["ime"] for e in kyc_aml.get("kyc_entitete", []) if e.get("tveganje") == "visoko"]
+        active_aml = [i["tip"] for i in kyc_aml.get("aml_indikatorji", []) if i.get("prisoten")]
+        if pep_flags:
+            lines.append(f"PEP osebe: {', '.join(pep_flags)}")
+        if high_risk:
+            lines.append(f"Visokorizične entitete: {', '.join(high_risk)}")
+        if active_aml:
+            lines.append(f"Aktivni AML indikatorji: {', '.join(active_aml)}")
+
+    lines.append("======================")
+    return "\n".join(lines)
+
 def tfl_ask(question: str, max_tokens: int = 800) -> dict:
     """Call TFL /ai/ask, collect SSE stream, return {answer, sources}."""
     if not TFL_API_KEY:
@@ -478,15 +544,21 @@ def tfl_ask(question: str, max_tokens: int = 800) -> dict:
         return {"answer": "", "sources": []}
 
 
-def tfl_answer_questions(questions: list, legal_field: str) -> list:
+def tfl_answer_questions(
+    questions: list, legal_field: str,
+    analysis: dict | None = None, ajpes_data: dict | None = None,
+) -> list:
     """For each question ask TFL and return qa_blocks with real sources."""
+    ctx = _tfl_context_block(analysis, ajpes_data) if analysis else ""
     qa_blocks = []
     for q in questions[:3]:  # max 3 to stay within rate limits
         prompt = (
-            f"{q} (področje: {legal_field}). "
-            "Odgovori jedrnato v 3–5 stavkih brez emotikonov in brez razdelkov s poudarjenimi naslovi."
+            f"{ctx}\n\n"
+            f"Vprašanje za zgornjo zadevo (področje: {legal_field}):\n{q}\n\n"
+            "Odgovori konkretno glede na kontekst zadeve v 3–5 stavkih brez emotikonov "
+            "in brez razdelkov s poudarjenimi naslovi."
         )
-        result = tfl_ask(prompt, max_tokens=400)
+        result = tfl_ask(prompt, max_tokens=500)
         qa_blocks.append({
             "vprasanje": q,
             "odgovor": result["answer"],
@@ -505,48 +577,69 @@ def _parse_numbered_list(text: str) -> list[str]:
     return items
 
 
-def tfl_generate_questions(legal_field: str, summary: str, jezik: str = 'sl') -> list[str]:
+def tfl_generate_questions(
+    legal_field: str, summary: str, jezik: str = 'sl',
+    analysis: dict | None = None, ajpes_data: dict | None = None,
+) -> list[str]:
     """Ask TFL to generate 3–5 follow-up questions for this matter."""
     lang = "v angleščini" if jezik == 'en' else "v slovenščini"
+    ctx = _tfl_context_block(analysis, ajpes_data) if analysis else ""
     question = (
-        f"Za pravno zadevo s področja '{legal_field}': {summary}\n\n"
-        f"Navedi 3–5 najpomembnejših usmerjevalnih vprašanj, ki jih mora odvetnik zastaviti stranki "
-        f"za pridobitev vseh bistvenih informacij. "
+        f"{ctx}\n\n"
+        f"Za zgornjo pravno zadevo s področja '{legal_field}' navedi 3–5 najpomembnejših "
+        f"usmerjevalnih vprašanj, ki jih mora odvetnik zastaviti stranki za pridobitev vseh "
+        f"bistvenih informacij. Vprašanja naj bodo konkretna glede na vpletene stranke, rok "
+        f"in specifičnosti zadeve — ne generična. "
         f"Odgovori SAMO z oštevilčenim seznamom vprašanj (format: '1. Vprašanje?'), brez uvoda. "
         f"Vprašanja napiši {lang}."
     )
-    result = tfl_ask(question, max_tokens=400)
+    result = tfl_ask(question, max_tokens=500)
     return _parse_numbered_list(result["answer"])[:5]
 
 
 def tfl_generate_aml_checklist(
-    legal_field: str, summary: str, entities: dict, aml_level: str, jezik: str = 'sl'
+    legal_field: str, summary: str, entities: dict, aml_level: str, jezik: str = 'sl',
+    analysis: dict | None = None, ajpes_data: dict | None = None, kyc_aml: dict | None = None,
 ) -> list[str]:
     """Ask TFL to generate ZPPDFT-2 documentation checklist for this matter."""
-    entity_list = (
-        entities.get("stranke", []) +
-        entities.get("nasprotna_stran", []) +
-        entities.get("ostali_upleteni", [])
-    )
-    entity_str = ", ".join(entity_list[:5]) if entity_list else "—"
     lang = "v angleščini" if jezik == 'en' else "v slovenščini"
+    ctx = _tfl_context_block(analysis, ajpes_data, kyc_aml) if analysis else ""
     question = (
-        f"Za pravno zadevo s področja '{legal_field}' (tveganje AML: {aml_level}): {summary}\n"
-        f"Vpletene entitete: {entity_str}\n\n"
-        f"Katera dokumentacija je obvezna po ZPPDFT-2 za tovrstno zadevo? "
-        f"Navedi konkretne dokumente z imeni entitet kjer relevantno. "
+        f"{ctx}\n\n"
+        f"Za zgornjo pravno zadevo s področja '{legal_field}' (AML tveganje: {aml_level}) "
+        f"katera dokumentacija je obvezna po ZPPDFT-2?\n"
+        f"Upoštevaj konkretne entitete, lastniško strukturo (AJPES), PEP status in aktivne AML "
+        f"indikatorje iz konteksta. Navedi dokumente z imeni entitet kjer relevantno.\n"
         f"Odgovori SAMO z oštevilčenim seznamom dokumentov (format: '1. Dokument'), brez uvoda. "
         f"Dokumenti naj bodo {lang}."
     )
-    result = tfl_ask(question, max_tokens=400)
+    result = tfl_ask(question, max_tokens=500)
     return _parse_numbered_list(result["answer"])[:12]
 
 
-def tfl_get_statutory_deadline(legal_field: str, summary: str) -> dict:
+def tfl_get_statutory_deadline(
+    legal_field: str, summary: str, analysis: dict | None = None
+) -> dict:
     """Ask TFL for the statutory deadline (in days) for this type of matter.
     Returns {days: int|None, basis: str, sources: []}."""
+    ctx = ""
+    if analysis:
+        rok = analysis.get("rok", {})
+        preteklo = rok.get("preteklo_dni")
+        ctx_parts = [f"Pravno področje: {legal_field}"]
+        if preteklo is not None:
+            ctx_parts.append(f"Od sprožilnega dogodka je preteklo že {preteklo} dni.")
+        if rok.get("opis"):
+            ctx_parts.append(f"Kontekst roka: {rok['opis']}")
+        ent = analysis.get("entitete", {})
+        jurisd = _detect_high_risk_jurisdiction(
+            " ".join(ent.get("stranke", []) + ent.get("nasprotna_stran", []))
+        )
+        if jurisd:
+            ctx_parts.append(f"Vpletene jurisdikcije: {', '.join(jurisd)}")
+        ctx = "\n".join(ctx_parts) + "\n\n"
     question = (
-        f"Za pravno zadevo s področja '{legal_field}': {summary}\n\n"
+        f"{ctx}Za pravno zadevo s področja '{legal_field}': {summary}\n\n"
         "Kateri je najkrajši obvezni zakonski rok, ki ga določa slovensko pravo za tovrstno zadevo "
         "(npr. od sprožilnega dogodka do izpolnitve obveznosti)?\n"
         "Odgovori OBVEZNO v tem formatu in samo tako:\n"
@@ -843,9 +936,10 @@ async def process_email(
             llm_kyc_aml_assessment, entitete, full_email, analysis, ajpes_data, tip_stranke
         )
         if TFL_API_KEY:
-            fut_q   = pool.submit(tfl_generate_questions, legal_field, povzetek, jezik)
+            # These run in parallel with KYC/AML — pass analysis+ajpes for context
+            fut_q   = pool.submit(tfl_generate_questions, legal_field, povzetek, jezik, analysis, ajpes_data)
             fut_ref = pool.submit(tfl_search, povzetek, ["act", "court"])
-            fut_rok = pool.submit(tfl_get_statutory_deadline, legal_field, povzetek)
+            fut_rok = pool.submit(tfl_get_statutory_deadline, legal_field, povzetek, analysis)
 
         kyc_aml = fut_kyc.result()
         aml_level = kyc_aml.get("skupno_tveganje", "nizko")
@@ -854,9 +948,10 @@ async def process_email(
             tfl_questions = fut_q.result()
             tfl_refs      = fut_ref.result()
             tfl_statutory = fut_rok.result()
-            # AML checklist uses the LLM-assessed risk level
+            # AML checklist runs after KYC/AML — passes full context including kyc_aml
             tfl_aml_checklist = tfl_generate_aml_checklist(
-                legal_field, povzetek, entitete, aml_level, jezik
+                legal_field, povzetek, entitete, aml_level, jezik,
+                analysis, ajpes_data, kyc_aml,
             )
 
     # Compute effective deadline: min(statutory_remaining, client_days)
@@ -888,9 +983,9 @@ async def process_email(
     # Call 3 — generate draft (GPT-4o) — uses updated analysis with TFL questions
     draft_result = llm_generate_draft(full_email, analysis, selected_cases)
 
-    # Call 4 — answer each TFL-generated question via TFL
+    # Call 4 — answer each TFL-generated question via TFL (full context available now)
     if TFL_API_KEY and tfl_questions:
-        tfl_qa = tfl_answer_questions(tfl_questions, legal_field)
+        tfl_qa = tfl_answer_questions(tfl_questions, legal_field, analysis, ajpes_data)
     else:
         tfl_qa = []
 
