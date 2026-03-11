@@ -342,6 +342,40 @@
         </div>
       </div>
 
+      <!-- TFL deadline info -->
+      <div id="tfl-deadline-card" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-4 shadow-sm">
+        <h3 class="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2">Zakonski roki (TFL)</h3>
+        <p id="tfl-deadline-text" class="text-xs text-amber-900 leading-relaxed"></p>
+        <div id="tfl-deadline-sources" class="mt-2 space-y-1"></div>
+      </div>
+
+      <!-- Video conference calendar -->
+      <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Video konferenca</h3>
+          <span id="cal-selected-label" class="text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded px-2 py-0.5 hidden"></span>
+        </div>
+        <!-- Month nav -->
+        <div class="flex items-center justify-between mb-2">
+          <button onclick="calPrevMonth()" class="text-slate-400 hover:text-slate-700 px-1">&#8249;</button>
+          <span id="cal-month-label" class="text-xs font-semibold text-slate-700"></span>
+          <button onclick="calNextMonth()" class="text-slate-400 hover:text-slate-700 px-1">&#8250;</button>
+        </div>
+        <!-- Day headers -->
+        <div class="grid grid-cols-7 mb-1">
+          <span class="text-center text-xs text-slate-400">Po</span><span class="text-center text-xs text-slate-400">To</span>
+          <span class="text-center text-xs text-slate-400">Sr</span><span class="text-center text-xs text-slate-400">Če</span>
+          <span class="text-center text-xs text-slate-400">Pe</span><span class="text-center text-xs text-slate-300">So</span>
+          <span class="text-center text-xs text-slate-300">Ne</span>
+        </div>
+        <div id="cal-grid" class="grid grid-cols-7 gap-0.5"></div>
+        <div class="flex items-center gap-3 mt-3 text-xs text-slate-400">
+          <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-green-400 inline-block"></span>3 prosti</span>
+          <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-amber-400 inline-block"></span>1–2</span>
+          <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-slate-200 inline-block"></span>Zasedeno</span>
+        </div>
+      </div>
+
       <!-- Questions -->
       <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
         <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Usmerjevalna vprašanja</h3>
@@ -411,7 +445,7 @@
     }
 
     // ── Main render ───────────────────────────────────────────────────────────
-    function render(r) {
+    async function render(r) {
       record        = r;
       citations     = r.citations   || {};
       qaBlocks      = r.qa_blocks   || [];
@@ -442,7 +476,10 @@
       renderTeamPanels();
       renderQuestionsPanel();
       renderTflRefs(r.tfl_refs || []);
+      renderTflDeadline(r.tfl_deadline || {});
       renderAttachments(r.attachments || []);
+      const urgent = (r.analysis?.rok?.nujno) || (r.analysis?.nujnost >= 0.8);
+      await initCalendar(urgent);
       checkExperienceWarning();
       rebuildDraft();
 
@@ -466,8 +503,18 @@
       // Normalize placeholder variants — LLM sometimes uses Slovenian diacritics (Š, Č…)
       text = text.replace(/\{\{USMERJEVALNA_VPRA[SŠ]ANJA\}\}/gi, '{{USMERJEVALNA_VPRASANJA}}');
       text = text.replace(/\{\{PREDLAGANA_EKIPA\}\}/gi, '{{PREDLAGANA_EKIPA}}');
+      text = text.replace(/\{\{PREDLAGANI[_ ]TERMIN\}\}/gi, '{{PREDLAGANI_TERMIN}}');
       text = text.replace(/\{\{QA_ODGOVORI\}\}/gi, '{{QA_ODGOVORI}}');
       text = text.replace(/\{\{POTREBNA[_ ]DOKUMENTACIJA\}\}/gi, '{{POTREBNA_DOKUMENTACIJA}}');
+
+      // Proposed meeting date
+      if (selectedDate) {
+        const d = new Date(selectedDate + 'T12:00:00');
+        const dateFmt = d.toLocaleDateString('sl-SI', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+        text = text.replaceAll('{{PREDLAGANI_TERMIN}}', dateFmt);
+      } else {
+        text = text.replaceAll('{{PREDLAGANI_TERMIN}}', '[datum videokonference]');
+      }
 
       // Team names — Oxford-style "in" before last name
       const namesList = teamIn.map(acr => allFieldAttys.find(a => a.acronym === acr)?.name).filter(Boolean);
@@ -966,6 +1013,13 @@
       const vf = teamIn.length <= 1 ? 'ima' : teamIn.length === 2 ? 'imata' : 'imajo';
       text = text.replace(/\bki ima(?:ta|jo)?\b/g, `ki ${vf}`);
       text = text.replace('[Vaše ime]', LOGGED_IN.name);
+      if (selectedDate) {
+        const d = new Date(selectedDate + 'T12:00:00');
+        const dateFmt = d.toLocaleDateString('sl-SI', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+        text = text.replace(/\{\{PREDLAGANI[_ ]TERMIN\}\}/gi, dateFmt);
+      } else {
+        text = text.replace(/\{\{PREDLAGANI[_ ]TERMIN\}\}/gi, '[datum videokonference]');
+      }
 
       // Replace QA block
       if (text.includes('{{QA_ODGOVORI}}')) {
@@ -1030,6 +1084,13 @@
       const qText = qs.filter((_,i)=>checkedQs.has(i)).map(q=>`• ${q}`).join('\n');
       draftText = draftText.replaceAll('{{USMERJEVALNA_VPRASANJA}}', qText);
       draftText = draftText.replaceAll('{{POTREBNA_DOKUMENTACIJA}}', amlChecklist.map(i=>`• ${i}`).join('\n'));
+      if (selectedDate) {
+        const d = new Date(selectedDate + 'T12:00:00');
+        const dateFmt = d.toLocaleDateString('sl-SI', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+        draftText = draftText.replace(/\{\{PREDLAGANI[_ ]TERMIN\}\}/gi, dateFmt);
+      } else {
+        draftText = draftText.replace(/\{\{PREDLAGANI[_ ]TERMIN\}\}/gi, '[datum videokonference]');
+      }
       if (draftText.includes('{{QA_ODGOVORI}}')) {
         const qaText = qaBlocks.map((qa,i)=>`${i+1}. ${qa.odgovor}`).join('\n');
         draftText = draftText.replaceAll('{{QA_ODGOVORI}}', qaText);
@@ -1169,6 +1230,94 @@
         btn.textContent = orig;
         btn.disabled = false;
       }
+    }
+
+    // ── TFL deadline ──────────────────────────────────────────────────────────
+    function renderTflDeadline(tflDeadline) {
+      if (!tflDeadline?.tfl_deadline_info) return;
+      const card = document.getElementById('tfl-deadline-card');
+      card.classList.remove('hidden');
+      document.getElementById('tfl-deadline-text').textContent = tflDeadline.tfl_deadline_info;
+      const srcs = tflDeadline.tfl_deadline_sources || [];
+      if (srcs.length) {
+        document.getElementById('tfl-deadline-sources').innerHTML =
+          srcs.map(s => tflSourceBtn(s)).join('');
+      }
+    }
+
+    // ── Calendar ──────────────────────────────────────────────────────────────
+    let calData = {};
+    let calYear, calMonth;
+    let selectedDate = null;
+
+    async function initCalendar(urgent) {
+      calData = await fetch('/api/calendar').then(r => r.json());
+      const today = new Date();
+      calYear  = today.getFullYear();
+      calMonth = today.getMonth();
+
+      // Auto-select: urgent → first day with ≥1 free, else first with ≥2
+      const minFree = urgent ? 1 : 2;
+      const sorted = Object.entries(calData)
+        .filter(([d, n]) => d >= today.toISOString().slice(0,10) && n >= minFree)
+        .sort(([a],[b]) => a.localeCompare(b));
+      if (sorted.length) selectDate(sorted[0][0], false);
+
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      const monthNames = ['Januar','Februar','Marec','April','Maj','Junij','Julij','Avgust','September','Oktober','November','December'];
+      document.getElementById('cal-month-label').textContent = `${monthNames[calMonth]} ${calYear}`;
+
+      const grid = document.getElementById('cal-grid');
+      const firstDay = new Date(calYear, calMonth, 1);
+      const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+      // Monday-first offset (0=Mon … 6=Sun)
+      let offset = (firstDay.getDay() + 6) % 7;
+
+      let html = '';
+      for (let i = 0; i < offset; i++) html += '<div></div>';
+      for (let d = 1; d <= daysInMonth; d++) {
+        const iso = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const free = calData[iso] ?? 0;
+        const isSelected = iso === selectedDate;
+        const today = new Date().toISOString().slice(0,10);
+        const isPast = iso < today;
+
+        let bg = 'bg-slate-100 text-slate-300 cursor-default';
+        if (!isPast) {
+          if (free === 0)      bg = 'bg-slate-100 text-slate-400 cursor-default';
+          else if (free <= 2)  bg = 'bg-amber-100 text-amber-800 hover:bg-amber-200 cursor-pointer';
+          else                 bg = 'bg-green-100 text-green-800 hover:bg-green-200 cursor-pointer';
+        }
+        if (isSelected) bg = 'bg-indigo-600 text-white cursor-pointer ring-2 ring-indigo-400';
+
+        const onclick = (!isPast && free > 0) ? `onclick="selectDate('${iso}')"` : '';
+        const title = isPast ? '' : `title="${free} ${free===1?'odvetnik prost':'odvetnika/i prosti'}"`;
+        html += `<div ${onclick} ${title} class="text-center text-xs py-1 rounded ${bg} font-medium">${d}</div>`;
+      }
+      grid.innerHTML = html;
+    }
+
+    function selectDate(iso, rebuild = true) {
+      selectedDate = iso;
+      const d = new Date(iso + 'T12:00:00');
+      const label = d.toLocaleDateString('sl-SI', {weekday:'short', day:'numeric', month:'long'});
+      const labelEl = document.getElementById('cal-selected-label');
+      labelEl.textContent = label;
+      labelEl.classList.remove('hidden');
+      renderCalendar();
+      if (rebuild) rebuildDraft();
+    }
+
+    function calPrevMonth() {
+      calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; }
+      renderCalendar();
+    }
+    function calNextMonth() {
+      calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; }
+      renderCalendar();
     }
 
     // ── Attachments ───────────────────────────────────────────────────────────
