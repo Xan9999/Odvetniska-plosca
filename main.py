@@ -1,7 +1,9 @@
 import json
 import os
+import re
 import uuid
 import pathlib
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, date, timedelta
 
 import io
@@ -102,10 +104,8 @@ Vrni ta JSON:
   "zahtevnost": <1–10, kjer 10 = izjemno kompleksno>,
   "zahtevnost_razlaga": "<1–2 stavka: zakaj takšna ocena zahtevnosti>",
   "povzetek": "<3–5 stavkov strnjen povzetek z pravno terminologijo>",
-  "dodatna_vprasanja": ["<vprašanje 1 — najpomembnejše, V JEZIKU MAILA>", "<vprašanje 2>", "<vprašanje 3>", "<vprašanje 4>", "<vprašanje 5>"],
   "aml_tveganje": "<nizko|srednje|visoko>",
-  "aml_razlaga": "<1–2 stavka: zakaj takšna ocena AML tveganja — navedi konkretne indikatorje: jurisdikcija, izvor sredstev, lastniška struktura, vrsta posla>",
-  "aml_checklist": ["<dokument 1 — V JEZIKU MAILA>", "<dokument 2>", ...]
+  "aml_razlaga": "<1–2 stavka: zakaj takšna ocena AML tveganja — navedi konkretne indikatorje: jurisdikcija, izvor sredstev, lastniška struktura, vrsta posla>"
 }}
 
 ⚠️ ROK — OBVEZNO: "cas_dni" mora biti MINIMUM med zakonskim in strankinim rokom.
@@ -114,23 +114,13 @@ Vrni ta JSON:
 - Primerjaj s strankinim rokom (stranka_cas_dni) → cas_dni = min(zakonski_preostali, stranka_cas_dni).
 - Če nobeden ni znan, vrni null.
 
-⚠️ JEZIK — OBVEZNO: Polji "dodatna_vprasanja" IN "aml_checklist" morata biti IZKLJUČNO v ISTEM JEZIKU KOT E-MAIL.
-- Mail v slovenščini → oba polji SAMO v slovenščini, nobena beseda v angleščini
-- Mail v angleščini → oba polji SAMO v angleščini
-- Mešan mail (sl-en) → slovenščina
-
-Pri aml_checklist upoštevaj konkretne okoliščine zadeve (ne le splošni seznam). Osnova glede na tveganje:
-- nizko: identity document / court registry extract, UBO declaration
-- srednje: + proof of source of funds, description of business relationship, ownership structure chart
-- visoko: + bank statements / proof of wealth, senior management approval, ongoing monitoring consent, foreign registry certificate
-Dodaj specifične postavke glede na dejansko zadevo (npr. pri M&A: financial statements of target company, pri nepremičninah: land registry extract).
-Vsak element je konkreten dokument ali ukrep z imenom entitete (npr. "Court registry extract — Rheingold Capital GmbH")."""
+⚠️ Vrni SAMO JSON brez kakršnega koli besedila zunaj JSON objekta."""
 
     resp = openai_client.chat.completions.create(
         model="gpt-4o",
         messages=[
             {"role": "system", "content": system},
-            {"role": "user", "content": f"E-mail:\n\n{email_text}\n\nIMPORTANT: Detect the email language first (set \"jezik\" field), then write \"dodatna_vprasanja\" and \"aml_checklist\" in THAT SAME language."},
+            {"role": "user", "content": f"E-mail:\n\n{email_text}"},
         ],
         response_format={"type": "json_object"},
         temperature=0.2,
@@ -327,6 +317,53 @@ def tfl_answer_questions(questions: list, legal_field: str) -> list:
             "sources": result["sources"],
         })
     return qa_blocks
+
+
+def _parse_numbered_list(text: str) -> list[str]:
+    """Extract items from a numbered list (1. item, 2) item, etc.)."""
+    items = []
+    for line in text.splitlines():
+        m = re.match(r'^\s*\d+[\.\)]\s*(.+)', line.strip())
+        if m:
+            items.append(m.group(1).strip())
+    return items
+
+
+def tfl_generate_questions(legal_field: str, summary: str, jezik: str = 'sl') -> list[str]:
+    """Ask TFL to generate 3–5 follow-up questions for this matter."""
+    lang = "v angleščini" if jezik == 'en' else "v slovenščini"
+    question = (
+        f"Za pravno zadevo s področja '{legal_field}': {summary}\n\n"
+        f"Navedi 3–5 najpomembnejših usmerjevalnih vprašanj, ki jih mora odvetnik zastaviti stranki "
+        f"za pridobitev vseh bistvenih informacij. "
+        f"Odgovori SAMO z oštevilčenim seznamom vprašanj (format: '1. Vprašanje?'), brez uvoda. "
+        f"Vprašanja napiši {lang}."
+    )
+    result = tfl_ask(question, max_tokens=400)
+    return _parse_numbered_list(result["answer"])[:5]
+
+
+def tfl_generate_aml_checklist(
+    legal_field: str, summary: str, entities: dict, aml_level: str, jezik: str = 'sl'
+) -> list[str]:
+    """Ask TFL to generate ZPPDFT-2 documentation checklist for this matter."""
+    entity_list = (
+        entities.get("stranke", []) +
+        entities.get("nasprotna_stran", []) +
+        entities.get("ostali_upleteni", [])
+    )
+    entity_str = ", ".join(entity_list[:5]) if entity_list else "—"
+    lang = "v angleščini" if jezik == 'en' else "v slovenščini"
+    question = (
+        f"Za pravno zadevo s področja '{legal_field}' (tveganje AML: {aml_level}): {summary}\n"
+        f"Vpletene entitete: {entity_str}\n\n"
+        f"Katera dokumentacija je obvezna po ZPPDFT-2 za tovrstno zadevo? "
+        f"Navedi konkretne dokumente z imeni entitet kjer relevantno. "
+        f"Odgovori SAMO z oštevilčenim seznamom dokumentov (format: '1. Dokument'), brez uvoda. "
+        f"Dokumenti naj bodo {lang}."
+    )
+    result = tfl_ask(question, max_tokens=400)
+    return _parse_numbered_list(result["answer"])[:12]
 
 
 _TFL_URL_MAP = {
@@ -554,20 +591,38 @@ async def process_email(
     selected_ids = llm_select_cases(analysis, cases)
     selected_cases = [c for c in cases if c["id"] in selected_ids]
 
-    # Call 3 — generate draft (GPT-4o)
+    # TFL parallel group: generate questions + AML checklist + semantic search
+    jezik = analysis.get("jezik", "sl")
+    legal_field = analysis.get("legal_field", "")
+    povzetek = analysis.get("povzetek", "")
+    aml_level = analysis.get("aml_tveganje", "nizko")
+    entitete = analysis.get("entitete", {})
+
+    tfl_questions: list[str] = []
+    tfl_aml_checklist: list[str] = []
+    tfl_refs: list = []
+
+    if TFL_API_KEY:
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            fut_q   = pool.submit(tfl_generate_questions, legal_field, povzetek, jezik)
+            fut_aml = pool.submit(tfl_generate_aml_checklist, legal_field, povzetek, entitete, aml_level, jezik)
+            fut_ref = pool.submit(tfl_search, povzetek, ["act", "court"])
+            tfl_questions      = fut_q.result()
+            tfl_aml_checklist  = fut_aml.result()
+            tfl_refs           = fut_ref.result()
+
+    # Store TFL-generated data back into analysis
+    analysis["dodatna_vprasanja"] = tfl_questions
+    analysis["aml_checklist"] = tfl_aml_checklist
+
+    # Call 3 — generate draft (GPT-4o) — uses updated analysis with TFL questions
     draft_result = llm_generate_draft(full_email, analysis, selected_cases)
 
-    # Call 4 — answer Q&A blocks with TFL (Gemini 2.5 Pro + Slovenian law DB)
-    questions = analysis.get("dodatna_vprasanja", [])
-    if TFL_API_KEY and questions:
-        tfl_qa = tfl_answer_questions(questions, analysis.get("legal_field", ""))
+    # Call 4 — answer each TFL-generated question via TFL
+    if TFL_API_KEY and tfl_questions:
+        tfl_qa = tfl_answer_questions(tfl_questions, legal_field)
     else:
-        tfl_qa = draft_result.get("qa_blocks", [])
-
-    # Call 5 — TFL semantic search for legal context
-    tfl_refs = []
-    if TFL_API_KEY and analysis.get("povzetek"):
-        tfl_refs = tfl_search(analysis["povzetek"], types=["act", "court"])
+        tfl_qa = []
 
     record = {
         "id": str(uuid.uuid4()),
