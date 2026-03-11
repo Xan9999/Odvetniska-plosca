@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="sl">
+<html lang="sl" class="jp-theme">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Jadek &amp; Pensa — Analiza</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/theme.css" />
   <style>
     /* ── Citation sentence highlight ── */
     .cited-sentence {
@@ -31,21 +32,31 @@
       border-left-color: #3b82f6;
     }
 
-    /* ── Inline hover popover ── */
-    #hover-popover {
-      position: fixed;
-      z-index: 60;
-      background: white;
+    /* ── Inline tip (appears under clicked sentence) ── */
+    .inline-tip {
+      margin: 6px 0 10px 0;
+      background: #f8fafc;
       border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      box-shadow: 0 8px 28px rgba(0,0,0,0.13);
-      padding: 11px 14px;
-      max-width: 380px;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.1s;
+      border-left: 3px solid #6366f1;
+      border-radius: 8px;
+      padding: 10px 13px;
+      font-size: 0.72rem;
+      line-height: 1.5;
+      color: #475569;
+      animation: tipIn 0.12s ease;
     }
-    #hover-popover.visible { opacity: 1; pointer-events: auto; }
+    .inline-tip.cite-tip { border-left-color: #d97706; }
+    .inline-tip.qa-tip   { border-left-color: #3b82f6; }
+    @keyframes tipIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+
+    /* ── Edit mode ── */
+    #draft-textarea {
+      width: 100%; min-height: 420px; resize: vertical;
+      font-size: 0.875rem; line-height: 1.75; color: #334155;
+      border: none; outline: none; background: transparent;
+      font-family: inherit;
+    }
+    .edit-mode-locked { opacity: 0.35; pointer-events: none; user-select: none; }
 
     /* ── Draft paragraphs ── */
     .draft-body p { margin-bottom: 0.85rem; line-height: 1.75; }
@@ -133,7 +144,7 @@
 
   <!-- Header -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
-    <div class="max-w-7xl mx-auto px-6 py-3 flex items-center gap-4">
+    <div class="w-full px-6 py-3 flex items-center gap-4">
       <a href="/" class="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 text-sm shrink-0">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -160,10 +171,14 @@
   </div>
 
   <!-- Content -->
-  <div id="page-content" class="hidden max-w-7xl mx-auto px-6 py-6 flex flex-col lg:flex-row gap-6 items-start">
+  <div id="page-content" class="hidden w-full px-6 py-6">
+    <div class="w-full max-w-[1680px] mx-auto flex flex-col lg:flex-row gap-6 items-start">
 
     <!-- ── LEFT ── -->
-    <div class="flex-1 min-w-0 space-y-4">
+    <div class="flex-1 min-w-0 flex justify-center lg:order-2">
+      <div class="w-full max-w-[1280px]">
+        <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_22rem] gap-4 items-start">
+        <div class="min-w-0 space-y-4">
 
       <!-- Draft panel -->
       <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
@@ -185,6 +200,13 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
               </svg>Kopiraj
+            </button>
+            <button id="btn-edit" onclick="enterEditMode()"
+              class="text-xs text-slate-500 hover:text-slate-800 border border-slate-200 px-3 py-1.5 rounded-md flex items-center gap-1 transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              </svg>Uredi
             </button>
             <button id="btn-mark-sent" onclick="markSent()"
               class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md font-medium transition-colors">
@@ -246,10 +268,87 @@
         <pre id="original-email"
           class="px-5 py-4 text-xs text-slate-500 font-mono whitespace-pre-wrap border-t border-slate-100 leading-relaxed bg-slate-50 overflow-x-auto"></pre>
       </details>
+        </div>
+
+        <aside id="insight-panel" class="space-y-4">
+          <!-- Summary / Profit -->
+          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <div class="flex items-baseline gap-2 mb-2">
+              <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Analiza zadeve</h3>
+              <span id="legal-field-badge" class="text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded px-2 py-0.5 leading-tight"></span>
+            </div>
+            <p id="summary-text" class="text-xs text-slate-600 leading-relaxed mb-3"></p>
+            <div class="space-y-2">
+              <div class="bg-slate-50 rounded-lg px-3 py-2">
+                <p class="text-xs text-slate-400 mb-0.5">Ocena zaslužka</p>
+                <p id="profit-num" class="text-sm font-bold text-slate-800"></p>
+              </div>
+              <div class="bg-slate-50 rounded-lg px-3 py-2 cursor-help" data-tooltip-key="zahtevnost_razlaga">
+                <p class="text-xs text-slate-400 mb-1">Zahtevnost</p>
+                <div class="flex items-center gap-2">
+                  <div class="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                    <div id="complexity-bar" class="h-full bg-indigo-500 rounded-full transition-all"></div>
+                  </div>
+                  <span id="complexity-num" class="text-xs font-bold text-slate-700 w-8 text-right"></span>
+                </div>
+              </div>
+              <div class="bg-slate-50 rounded-lg px-3 py-2 cursor-help" data-tooltip-key="aml_razlaga">
+                <p class="text-xs text-slate-400 mb-0.5">AML / KYC tveganje</p>
+                <p id="aml-label" class="text-sm font-semibold"></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sources -->
+          <div id="tfl-refs-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Relevantni pravni viri</h3>
+            <ul id="tfl-refs-list" class="space-y-2"></ul>
+          </div>
+
+          <!-- Questions -->
+          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Usmerjevalna vprašanja</h3>
+            <p class="text-xs text-indigo-500 mb-3">Označena se pojavijo v mailu</p>
+            <ul id="questions-list" class="space-y-2.5"></ul>
+          </div>
+
+          <!-- AML checklist -->
+          <div id="aml-checklist-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Potrebna dokumentacija (ZPPDFT-2)</h3>
+            <ul id="aml-checklist" class="space-y-2 mb-3"></ul>
+            <div class="flex gap-1.5">
+              <input id="aml-add-input" type="text" placeholder="Dodaj dokument…"
+                class="flex-1 text-xs border border-slate-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-indigo-400"
+                onkeydown="if(event.key==='Enter') addAmlItem()" />
+              <button onclick="addAmlItem()"
+                class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1.5 rounded-md transition-colors shrink-0">+</button>
+            </div>
+          </div>
+
+          <!-- TFL legal Q&A chat -->
+          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <div class="flex items-center gap-2 mb-3">
+              <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Pravna baza</h3>
+              <span class="text-xs text-slate-400 bg-slate-100 rounded px-1.5 py-0.5">Tax-Fin-Lex</span>
+            </div>
+            <div id="tfl-chat-messages" class="space-y-3 mb-3 max-h-72 overflow-y-auto"></div>
+            <div class="flex gap-1.5">
+              <input id="tfl-input" type="text" placeholder="Vprašaj pravno bazo…"
+                class="flex-1 text-xs border border-slate-200 rounded-md px-2.5 py-2 focus:outline-none focus:border-indigo-400"
+                onkeydown="if(event.key==='Enter') tflAsk()" />
+              <button onclick="tflAsk()"
+                class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-md font-medium transition-colors shrink-0">
+                Pošlji
+              </button>
+            </div>
+          </div>
+        </aside>
+        </div>
+      </div>
     </div>
 
     <!-- ── RIGHT: Dashboard ── -->
-    <div id="right-panel" class="w-full lg:w-80 xl:w-96 shrink-0 space-y-4">
+    <div id="right-panel" class="w-full lg:w-72 xl:w-80 shrink-0 space-y-4 lg:order-1">
 
       <!-- Conflict -->
       <div id="conflict-card" class="rounded-xl border p-4 shadow-sm"></div>
@@ -263,47 +362,6 @@
             <p id="deadline-label" class="font-semibold text-slate-800 text-sm"></p>
             <p id="deadline-desc"  class="text-xs text-slate-500 mt-0.5"></p>
           </div>
-        </div>
-      </div>
-
-      <!-- Metrics -->
-      <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-        <div class="flex items-baseline gap-2 mb-2">
-          <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Analiza zadeve</h3>
-          <span id="legal-field-badge" class="text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded px-2 py-0.5 leading-tight"></span>
-        </div>
-        <p id="summary-text" class="text-xs text-slate-600 leading-relaxed mb-3"></p>
-        <div class="space-y-2">
-          <div class="bg-slate-50 rounded-lg px-3 py-2">
-            <p class="text-xs text-slate-400 mb-0.5">Ocena zaslužka</p>
-            <p id="profit-num" class="text-sm font-bold text-slate-800"></p>
-          </div>
-          <div class="bg-slate-50 rounded-lg px-3 py-2 cursor-help" data-tooltip-key="zahtevnost_razlaga">
-            <p class="text-xs text-slate-400 mb-1">Zahtevnost</p>
-            <div class="flex items-center gap-2">
-              <div class="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                <div id="complexity-bar" class="h-full bg-indigo-500 rounded-full transition-all"></div>
-              </div>
-              <span id="complexity-num" class="text-xs font-bold text-slate-700 w-8 text-right"></span>
-            </div>
-          </div>
-          <div class="bg-slate-50 rounded-lg px-3 py-2 cursor-help" data-tooltip-key="aml_razlaga">
-            <p class="text-xs text-slate-400 mb-0.5">AML / KYC tveganje</p>
-            <p id="aml-label" class="text-sm font-semibold"></p>
-          </div>
-        </div>
-      </div>
-
-      <!-- AML checklist -->
-      <div id="aml-checklist-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Potrebna dokumentacija (ZPPDFT-2)</h3>
-        <ul id="aml-checklist" class="space-y-2 mb-3"></ul>
-        <div class="flex gap-1.5">
-          <input id="aml-add-input" type="text" placeholder="Dodaj dokument…"
-            class="flex-1 text-xs border border-slate-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-indigo-400"
-            onkeydown="if(event.key==='Enter') addAmlItem()" />
-          <button onclick="addAmlItem()"
-            class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1.5 rounded-md transition-colors shrink-0">+</button>
         </div>
       </div>
 
@@ -342,13 +400,6 @@
         </div>
       </div>
 
-      <!-- TFL deadline info -->
-      <div id="tfl-deadline-card" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-4 shadow-sm">
-        <h3 class="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2">Zakonski roki (TFL)</h3>
-        <p id="tfl-deadline-text" class="text-xs text-amber-900 leading-relaxed"></p>
-        <div id="tfl-deadline-sources" class="mt-2 space-y-1"></div>
-      </div>
-
       <!-- Video conference calendar -->
       <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
         <div class="flex items-center justify-between mb-3">
@@ -376,37 +427,7 @@
         </div>
       </div>
 
-      <!-- Questions -->
-      <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Usmerjevalna vprašanja</h3>
-        <p class="text-xs text-indigo-500 mb-3">Označena se pojavijo v mailu</p>
-        <ul id="questions-list" class="space-y-2.5"></ul>
-      </div>
-
-      <!-- TFL legal references -->
-      <div id="tfl-refs-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Relevantni pravni viri</h3>
-        <ul id="tfl-refs-list" class="space-y-2"></ul>
-      </div>
-
-      <!-- TFL legal Q&A chat -->
-      <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-        <div class="flex items-center gap-2 mb-3">
-          <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Pravna baza</h3>
-          <span class="text-xs text-slate-400 bg-slate-100 rounded px-1.5 py-0.5">Tax-Fin-Lex</span>
-        </div>
-        <div id="tfl-chat-messages" class="space-y-3 mb-3 max-h-72 overflow-y-auto"></div>
-        <div class="flex gap-1.5">
-          <input id="tfl-input" type="text" placeholder="Vprašaj pravno bazo…"
-            class="flex-1 text-xs border border-slate-200 rounded-md px-2.5 py-2 focus:outline-none focus:border-indigo-400"
-            onkeydown="if(event.key==='Enter') tflAsk()" />
-          <button onclick="tflAsk()"
-            class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-md font-medium transition-colors shrink-0">
-            Pošlji
-          </button>
-        </div>
-      </div>
-
+    </div>
     </div>
   </div>
 
@@ -476,7 +497,6 @@
       renderTeamPanels();
       renderQuestionsPanel();
       renderTflRefs(r.tfl_refs || []);
-      renderTflDeadline(r.tfl_deadline || {});
       renderAttachments(r.attachments || []);
       const urgent = (r.analysis?.rok?.nujno) || (r.analysis?.nujnost >= 0.8);
       await initCalendar(urgent);
@@ -649,27 +669,55 @@
       return amlChecklist.map(item => `<p class="text-sm text-slate-700">• ${esc(item)}</p>`).join('');
     }
 
-    // ── Click: citations + Q&A → persistent detail panel ─────────────────────
+    // ── Inline tip (appears directly below clicked element) ───────────────────
+    function removeInlineTips() {
+      document.querySelectorAll('.inline-tip').forEach(el => el.remove());
+    }
+
+    function insertInlineTip(anchorEl, html, tipClass) {
+      removeInlineTips();
+      const tip = document.createElement('div');
+      tip.className = `inline-tip ${tipClass}`;
+      tip.innerHTML = html;
+      // Insert after the closest <p> ancestor (or the element itself)
+      const para = anchorEl.closest('p') || anchorEl;
+      para.insertAdjacentElement('afterend', tip);
+    }
+
+    // ── Click: citations + Q&A → inline tip + persistent detail panel ─────────
     function setupDraftHovers() {
       const wrapper = document.getElementById('draft-wrapper');
       wrapper.addEventListener('click', e => {
+        if (e.target.closest('.inline-tip')) return; // don't close when clicking inside tip
         const cited = e.target.closest('.cited-sentence');
         const qaEl  = e.target.closest('.qa-item');
         if (cited) {
           document.querySelectorAll('.cited-sentence').forEach(x => x.classList.remove('active'));
           cited.classList.add('active');
-          showCitePanel(cited.dataset.ref, cited.dataset.num);
+          showCitePanel(cited.dataset.ref, cited.dataset.num, cited);
         } else if (qaEl) {
           document.querySelectorAll('.qa-item').forEach(x => x.classList.remove('active'));
           qaEl.classList.add('active');
-          showQAPanel(parseInt(qaEl.dataset.qa));
+          showQAPanel(parseInt(qaEl.dataset.qa), qaEl);
+        } else {
+          removeInlineTips();
+          closeDetailPanel();
         }
       });
     }
 
-    function showCitePanel(refKey, num) {
+    function showCitePanel(refKey, num, anchorEl) {
       const cit = citations[refKey];
       if (!cit) return;
+
+      const innerHtml = `
+        <span class="font-semibold text-slate-700">Primer [${num}]: ${esc(cit.naslov || '')}</span>
+        ${cit.leto ? ` <span class="text-slate-400">· ${cit.leto}</span>` : ''}
+        ${cit.opis  ? `<br>${esc(cit.opis)}` : ''}
+        ${cit.izid  ? `<br><span class="text-green-700 font-medium">✓ ${esc(cit.izid)}</span>` : ''}`;
+
+      if (anchorEl) insertInlineTip(anchorEl, innerHtml, 'cite-tip');
+
       document.getElementById('detail-panel-label').textContent = `Primer [${num}]`;
       document.getElementById('detail-panel-body').innerHTML = `
         <p class="font-semibold text-slate-800">${esc(cit.naslov || '')}</p>
@@ -680,7 +728,7 @@
       document.getElementById('detail-panel').classList.remove('hidden');
     }
 
-    function showQAPanel(idx) {
+    function showQAPanel(idx, anchorEl) {
       const qa = qaBlocks[idx];
       if (!qa) return;
       const srcs = qa.sources || [];
@@ -690,6 +738,13 @@
             ${srcs.map(s => tflSourceBtn(s)).join('')}
            </div>`
         : '';
+
+      const tipHtml = `
+        <span class="text-slate-400 italic">${esc(qa.vprasanje || '')}</span><br>
+        ${esc(qa.odgovor || '')}`;
+
+      if (anchorEl) insertInlineTip(anchorEl, tipHtml, 'qa-tip');
+
       document.getElementById('detail-panel-label').textContent = `Odgovor ${idx + 1}`;
       document.getElementById('detail-panel-body').innerHTML = `
         <p class="text-slate-400 italic mb-1">${esc(qa.vprasanje || '')}</p>
@@ -747,7 +802,14 @@
       const lbl = document.getElementById('deadline-label');
       lbl.textContent = rok.cas_dni === 1 ? 'Manj kot 1 dan' : `${rok.cas_dni} dni`;
       lbl.className = `font-semibold text-sm ${urgent ? 'text-red-600' : 'text-amber-700'}`;
-      document.getElementById('deadline-desc').textContent = rok.opis || '';
+      // Show breakdown if both components are known
+      let desc = rok.opis || '';
+      if (rok.zakonski_limit_dni != null && rok.stranka_cas_dni != null) {
+        const zakonski_preostanek = rok.zakonski_limit_dni - (rok.preteklo_dni || 0);
+        desc = `Zakonski preostanek: ${zakonski_preostanek} dni · Stranka: ${rok.stranka_cas_dni} dni`;
+        if (rok.opis) desc += ` — ${rok.opis}`;
+      }
+      document.getElementById('deadline-desc').textContent = desc;
     }
 
     // ── Metrics ───────────────────────────────────────────────────────────────
@@ -807,16 +869,20 @@
 
     // ── Tooltip (right panel) ─────────────────────────────────────────────────
     function setupTooltips() {
-      const panel = document.getElementById('right-panel');
-      panel.addEventListener('mouseover', e => {
-        const el = e.target.closest('[data-tooltip-key]');
-        if (!el) return;
-        const text = record?.analysis?.[el.dataset.tooltipKey];
-        if (text) showGTip(e, text);
-      });
-      panel.addEventListener('mousemove', e => moveGTip(e));
-      panel.addEventListener('mouseout',  e => { if (!e.target.closest('[data-tooltip-key]')) hideGTip(); });
-      panel.addEventListener('mouseleave', hideGTip);
+      const panels = ['right-panel', 'insight-panel']
+        .map(id => document.getElementById(id))
+        .filter(Boolean);
+      for (const panel of panels) {
+        panel.addEventListener('mouseover', e => {
+          const el = e.target.closest('[data-tooltip-key]');
+          if (!el) return;
+          const text = record?.analysis?.[el.dataset.tooltipKey];
+          if (text) showGTip(e, text);
+        });
+        panel.addEventListener('mousemove', e => moveGTip(e));
+        panel.addEventListener('mouseout',  e => { if (!e.target.closest('[data-tooltip-key]')) hideGTip(); });
+        panel.addEventListener('mouseleave', hideGTip);
+      }
     }
     function showGTip(e, text) { const t=document.getElementById('g-tooltip'); t.textContent=text; t.classList.remove('hidden'); moveGTip(e); }
     function moveGTip(e) { const t=document.getElementById('g-tooltip'); if(t.classList.contains('hidden'))return; t.style.left=Math.min(e.clientX+14,window.innerWidth-295)+'px'; t.style.top=(e.clientY-10)+'px'; }
@@ -1048,6 +1114,98 @@
       location.reload();
     }
 
+    // ── Edit mode ─────────────────────────────────────────────────────────────
+    let editMode = false;
+
+    function getDraftPlainText() {
+      // Same logic as copyDraft but returns text
+      if (currentMode === 'zavrni') {
+        const reasons = [];
+        if (document.getElementById('reason-konflikt')?.checked)   reasons.push('konflikta interesov');
+        if (document.getElementById('reason-zasedenost')?.checked) reasons.push('zasedenosti naše ekipe');
+        if (document.getElementById('reason-podrocje')?.checked)   reasons.push('tega, da zadeva ni v naši pristojnosti');
+        const clientName = record?.sender?.name || 'spoštovani';
+        if (!reasons.length) {
+          return `Spoštovani ${clientName},\n\nzahvaljujemo se vam za zaupanje in vaš elektronski dopis. Po pregledu vaše zadeve vas z obžalovanjem obveščamo, da vašega naročila žal ne moremo sprejeti.\n\nZa morebitna vprašanja smo vam na voljo.\n\nS spoštovanjem,\n${LOGGED_IN.name}\nJadek & Pensa, odvetniška pisarna d.o.o.`;
+        }
+        const reasonStr = reasons.length === 1 ? reasons[0] : reasons.slice(0,-1).join(', ') + ' in ' + reasons[reasons.length-1];
+        return `Spoštovani ${clientName},\n\nzahvaljujemo se vam za zaupanje in vaš elektronski dopis. Po pregledu vaše zadeve vas z obžalovanjem obveščamo, da vašega naročila žal ne moremo sprejeti zaradi ${reasonStr}.\n\nPriporočamo vam, da se obrnete na drugega pravnega svetovalca.\n\nZa morebitna vprašanja smo vam na voljo.\n\nS spoštovanjem,\n${LOGGED_IN.name}\nJadek & Pensa, odvetniška pisarna d.o.o.`;
+      }
+      let text = record.draft || '';
+      const nl = teamIn.map(acr => allFieldAttys.find(a=>a.acronym===acr)?.name).filter(Boolean);
+      const names = nl.length <= 1 ? (nl[0]||'—') : nl.slice(0,-1).join(', ') + ' & ' + nl[nl.length-1];
+      text = text.replaceAll('{{PREDLAGANA_EKIPA}}', names).replace(/\bekipi v sestavi\b/g,'ekipi');
+      const vf = teamIn.length<=1?'ima':teamIn.length===2?'imata':'imajo';
+      text = text.replace(/\bki ima(?:ta|jo)?\b/g,`ki ${vf}`).replace('[Vaše ime]', LOGGED_IN.name);
+      if (selectedDate) {
+        const d = new Date(selectedDate + 'T12:00:00');
+        text = text.replace(/\{\{PREDLAGANI[_ ]TERMIN\}\}/gi, d.toLocaleDateString('sl-SI',{weekday:'long',day:'numeric',month:'long',year:'numeric'}));
+      } else {
+        text = text.replace(/\{\{PREDLAGANI[_ ]TERMIN\}\}/gi, '[datum videokonference]');
+      }
+      const qs = record.analysis?.dodatna_vprasanja || [];
+      const qText = qs.filter((_,i)=>checkedQs.has(i)).map(q=>`• ${q}`).join('\n');
+      text = text.replaceAll('{{USMERJEVALNA_VPRASANJA}}', qText);
+      text = text.replaceAll('{{POTREBNA_DOKUMENTACIJA}}', amlChecklist.map(i=>`• ${i}`).join('\n'));
+      if (text.includes('{{QA_ODGOVORI}}')) {
+        const qaText = qaBlocks.map((qa,i)=>`${i+1}. ${qa.odgovor}`).join('\n');
+        text = text.replaceAll('{{QA_ODGOVORI}}', qaText);
+      }
+      text = text.replace(/\[REF:[^\]]+\]/g,'');
+      return text;
+    }
+
+    function enterEditMode() {
+      if (editMode) return;
+      editMode = true;
+
+      const plainText = getDraftPlainText();
+
+      // Replace draft body with editable textarea
+      const wrapper = document.getElementById('draft-wrapper');
+      wrapper.innerHTML = `<textarea id="draft-textarea" spellcheck="true">${plainText.replace(/</g,'&lt;')}</textarea>`;
+
+      // Hide edit button
+      document.getElementById('btn-edit').classList.add('hidden');
+
+      // Switch mark-sent → Pošlji
+      const sendBtn = document.getElementById('btn-mark-sent');
+      sendBtn.textContent = 'Pošlji';
+      sendBtn.className = 'text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md font-medium transition-colors';
+      sendBtn.onclick = sendMail;
+
+      // Lock accept/reject toggle
+      document.getElementById('btn-sprejmi').disabled = true;
+      document.getElementById('btn-zavrni').disabled = true;
+      document.getElementById('btn-sprejmi').classList.add('opacity-40','cursor-not-allowed');
+      document.getElementById('btn-zavrni').classList.add('opacity-40','cursor-not-allowed');
+
+      // Gray out side panels and detail panel
+      document.getElementById('right-panel').classList.add('edit-mode-locked');
+      const ip = document.getElementById('insight-panel');
+      if (ip) ip.classList.add('edit-mode-locked');
+      const dp = document.getElementById('detail-panel');
+      if (dp) dp.classList.add('hidden');
+      removeInlineTips();
+
+      // Add edit mode banner
+      wrapper.insertAdjacentHTML('beforebegin',
+        `<div class="px-6 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-700 flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+          </svg>
+          Način urejanja — sprememb ni mogoče razveljaviti
+        </div>`);
+    }
+
+    async function sendMail() {
+      if (!record) return;
+      const text = document.getElementById('draft-textarea')?.value || getDraftPlainText();
+      const mailto = `mailto:${encodeURIComponent(record.sender.email)}?subject=${encodeURIComponent('RE: ' + record.sender.subject)}&body=${encodeURIComponent(text)}`;
+      window.location.href = mailto;
+      await fetch(`/api/emails/${emailId}/status?status=sent`, { method:'PATCH' });
+    }
+
     // ── Export PDF ────────────────────────────────────────────────────────────
     function exportPDF() {
       if (!record) return;
@@ -1229,19 +1387,6 @@
       } finally {
         btn.textContent = orig;
         btn.disabled = false;
-      }
-    }
-
-    // ── TFL deadline ──────────────────────────────────────────────────────────
-    function renderTflDeadline(tflDeadline) {
-      if (!tflDeadline?.tfl_deadline_info) return;
-      const card = document.getElementById('tfl-deadline-card');
-      card.classList.remove('hidden');
-      document.getElementById('tfl-deadline-text').textContent = tflDeadline.tfl_deadline_info;
-      const srcs = tflDeadline.tfl_deadline_sources || [];
-      if (srcs.length) {
-        document.getElementById('tfl-deadline-sources').innerHTML =
-          srcs.map(s => tflSourceBtn(s)).join('');
       }
     }
 

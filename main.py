@@ -1,7 +1,9 @@
 import json
 import os
+import re
 import uuid
 import pathlib
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, date, timedelta
 
 import io
@@ -19,11 +21,17 @@ from rapidfuzz import fuzz
 
 load_dotenv()
 
+AJPES_PRS_SEARCH = "https://prs.ajpes.si/prs/app/web/VpisList"
+AJPES_PRS_DETAIL = "https://prs.ajpes.si/prs/app/web/Vpis"
+
 app = FastAPI(title="Jadek & Pensa — Sistem za sprejem strank")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-openai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+openai_client = OpenAI(
+    api_key=os.environ["OPENAI_API_KEY"],
+    base_url=os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+)
 
 TFL_API_KEY = os.environ.get("TFL_API_KEY", "")
 TFL_BASE = "https://www.tax-fin-lex.si/api/v1"
@@ -87,9 +95,10 @@ Vrni ta JSON:
   "nujnost": <0.0–1.0, kjer 1.0 = izjemno nujno>,
   "profit": <ocena zaslužka v EUR, celo število>,
   "rok": {{
-    "nujno": <true/false>,
-    "cas_dni": <število dni ali null>,
-    "opis": "<kratek opis roka ali null>"
+    "nujno": <true/false — ali obstaja kakršenkoli rok>,
+    "stranka_cas_dni": <koliko dni ima stranka po lastnih besedah ali null>,
+    "preteklo_dni": <koliko dni je že preteklo od sprožitvenega dogodka omenjenega v mailu ali null>,
+    "opis": "<1 stavek: opis konteksta roka — kaj je sprožilni dogodek, kaj je stranka omenila>"
   }},
   "entitete": {{
     "stranke": ["<ime podjetja ali osebe — stranka ki piše>"],
@@ -99,29 +108,17 @@ Vrni ta JSON:
   "zahtevnost": <1–10, kjer 10 = izjemno kompleksno>,
   "zahtevnost_razlaga": "<1–2 stavka: zakaj takšna ocena zahtevnosti>",
   "povzetek": "<3–5 stavkov strnjen povzetek z pravno terminologijo>",
-  "dodatna_vprasanja": ["<vprašanje 1 — najpomembnejše, V JEZIKU MAILA>", "<vprašanje 2>", "<vprašanje 3>", "<vprašanje 4>", "<vprašanje 5>"],
-  "aml_tveganje": "<nizko|srednje|visoko>",
-  "aml_razlaga": "<1–2 stavka: zakaj takšna ocena AML tveganja — navedi konkretne indikatorje: jurisdikcija, izvor sredstev, lastniška struktura, vrsta posla>",
-  "aml_checklist": ["<dokument 1 — V JEZIKU MAILA>", "<dokument 2>", ...]
+  "tip_stranke": "<fizicna|pravna — ali gre za fizično ali pravno osebo (d.o.o., d.d., GmbH …)>"
 }}
 
-⚠️ JEZIK — OBVEZNO: Polji "dodatna_vprasanja" IN "aml_checklist" morata biti IZKLJUČNO v ISTEM JEZIKU KOT E-MAIL.
-- Mail v slovenščini → oba polji SAMO v slovenščini, nobena beseda v angleščini
-- Mail v angleščini → oba polji SAMO v angleščini
-- Mešan mail (sl-en) → slovenščina
-
-Pri aml_checklist upoštevaj konkretne okoliščine zadeve (ne le splošni seznam). Osnova glede na tveganje:
-- nizko: identity document / court registry extract, UBO declaration
-- srednje: + proof of source of funds, description of business relationship, ownership structure chart
-- visoko: + bank statements / proof of wealth, senior management approval, ongoing monitoring consent, foreign registry certificate
-Dodaj specifične postavke glede na dejansko zadevo (npr. pri M&A: financial statements of target company, pri nepremičninah: land registry extract).
-Vsak element je konkreten dokument ali ukrep z imenom entitete (npr. "Court registry extract — Rheingold Capital GmbH")."""
+⚠️ ROK: Ekstrahiraj SAMO kar piše v mailu — ne ugibaj zakonodaje. Zakonski rok bo določen posebej.
+⚠️ Vrni SAMO JSON brez kakršnega koli besedila zunaj JSON objekta."""
 
     resp = openai_client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-5.4",
         messages=[
             {"role": "system", "content": system},
-            {"role": "user", "content": f"E-mail:\n\n{email_text}\n\nIMPORTANT: Detect the email language first (set \"jezik\" field), then write \"dodatna_vprasanja\" and \"aml_checklist\" in THAT SAME language."},
+            {"role": "user", "content": f"E-mail:\n\n{email_text}"},
         ],
         response_format={"type": "json_object"},
         temperature=0.2,
@@ -149,7 +146,7 @@ Razpoložljivi primeri:
 {cases_summary}"""
 
     resp = openai_client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-5.4",
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": user},
@@ -247,7 +244,7 @@ RELEVANTNI PRIMERI IZ BAZE:
 {cases_text}"""
 
     resp = openai_client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-5.4",
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": user},
@@ -256,6 +253,184 @@ RELEVANTNI PRIMERI IZ BAZE:
         temperature=0.4,
     )
     return json.loads(resp.choices[0].message.content)
+
+
+# ── AJPES integration ────────────────────────────────────────────────────────
+
+# High-risk jurisdictions for AML purposes (FATF grey/blacklist + known offshore)
+HIGH_RISK_JURISDICTIONS = {
+    "ae", "uae", "cayman", "bvi", "british virgin", "panama", "seychelles",
+    "belize", "marshall islands", "liechtenstein", "andorra", "monaco",
+    "iran", "north korea", "myanmar", "russia", "belarus", "syria",
+    "afghanistan", "somalia", "yemen", "libya", "venezuela", "cuba",
+    "nigeria", "kenya", "pakistan", "cambodia", "haiti", "south sudan",
+}
+
+
+def _ajpes_normalize(raw: dict) -> dict:
+    """Normalize an AJPES record to a consistent internal format."""
+    return {
+        "ime": raw.get("ime") or raw.get("name") or raw.get("naziv") or "",
+        "maticna": raw.get("maticnaStevilka") or raw.get("maticna") or "",
+        "status": raw.get("statusSubjekta") or raw.get("status") or "",
+        "naslov": raw.get("naslov") or raw.get("naslovUlica") or "",
+        "dejavnost": raw.get("dejavnost") or raw.get("skdKoda") or "",
+        "zastopniki": raw.get("zastopniki") or raw.get("directors") or [],
+        "lastniki": raw.get("lastniki") or raw.get("owners") or [],
+        "kapital": raw.get("osnovniKapital") or raw.get("kapital"),
+        "ustanovljena": raw.get("datumVpisa") or raw.get("founded") or "",
+        "pravnaoblika": raw.get("pravnaOblika") or raw.get("legalForm") or "",
+    }
+
+
+def ajpes_lookup(name: str) -> dict:
+    """
+    Look up an entity in AJPES PRS (Poslovni register Slovenije).
+    Returns normalised dict or {} on failure/not found.
+    """
+    if not name or len(name.strip()) < 3:
+        return {}
+    try:
+        resp = requests.get(
+            AJPES_PRS_SEARCH,
+            params={"format": "json", "ime": name.strip(), "steviloPrikazov": "3"},
+            timeout=8,
+            headers={"Accept": "application/json"},
+        )
+        if resp.status_code != 200:
+            return {}
+        data = resp.json()
+        # AJPES may return list directly or wrapped in a key
+        items = data if isinstance(data, list) else (
+            data.get("items") or data.get("results") or data.get("data") or []
+        )
+        if not items:
+            return {}
+        first = items[0]
+        subj_id = first.get("subjektMRSId") or first.get("id") or ""
+        if not subj_id:
+            return _ajpes_normalize(first)
+        # Fetch full details
+        detail = requests.get(
+            AJPES_PRS_DETAIL,
+            params={"format": "json", "subjektMRSId": str(subj_id)},
+            timeout=8,
+        )
+        if detail.status_code == 200:
+            try:
+                return _ajpes_normalize(detail.json())
+            except Exception:
+                pass
+        return _ajpes_normalize(first)
+    except Exception:
+        return {}
+
+
+def _detect_high_risk_jurisdiction(text: str) -> list[str]:
+    """Return list of high-risk jurisdiction keywords found in text."""
+    lower = text.lower()
+    return [j for j in HIGH_RISK_JURISDICTIONS if j in lower]
+
+
+def llm_kyc_aml_assessment(
+    entities: dict,
+    email_text: str,
+    analysis: dict,
+    ajpes_data: dict,          # {entity_name: ajpes_dict}
+    tip_stranke: str = "pravna",
+) -> dict:
+    """
+    Full structured KYC + AML risk assessment using LLM.
+    ajpes_data: dict of entity_name → ajpes_lookup() result (may be empty per entity)
+    Returns kyc_entitete, aml_indikatorji, skupno_tveganje, skupna_razlaga.
+    """
+    # Build entity context block
+    entity_lines = []
+    all_entities = (
+        [("stranka", e) for e in entities.get("stranke", [])] +
+        [("nasprotna stran", e) for e in entities.get("nasprotna_stran", [])] +
+        [("ostali", e) for e in entities.get("ostali_upleteni", [])]
+    )
+    for role, ename in all_entities:
+        aj = ajpes_data.get(ename, {})
+        if aj:
+            zastopniki = ", ".join(str(z) for z in aj.get("zastopniki", [])[:4]) or "—"
+            lastniki = ", ".join(str(o) for o in aj.get("lastniki", [])[:4]) or "—"
+            entity_lines.append(
+                f"- {ename} [{role}] | AJPES: maticna={aj.get('maticna','?')}, "
+                f"status={aj.get('status','?')}, dejavnost={aj.get('dejavnost','?')}, "
+                f"pravna oblika={aj.get('pravnaoblika','?')}, kapital={aj.get('kapital','?')}, "
+                f"zastopniki=[{zastopniki}], lastniki=[{lastniki}]"
+            )
+        else:
+            entity_lines.append(f"- {ename} [{role}] | AJPES: ni podatkov")
+    entities_block = "\n".join(entity_lines) if entity_lines else "— ni entitet —"
+
+    # Jurisdiction hints from email
+    hrj = _detect_high_risk_jurisdiction(email_text)
+    jurisdiction_hint = f"Visokorizične jurisdikcije zaznane v mailu: {', '.join(hrj)}" if hrj else "Ni zaznanih visokorizičnih jurisdikcij."
+
+    system = """Si compliance strokovnjak v odvetniški pisarni. Oceni KYC in AML tveganje na podlagi posredovanih podatkov.
+
+Vrni SAMO veljavni JSON v tej obliki:
+{
+  "kyc_entitete": [
+    {
+      "ime": "<ime>",
+      "tip": "<fizična|pravna>",
+      "pep": <true|false — politično izpostavljena oseba ali njen bližnji>,
+      "pep_razlaga": "<zakaj PEP ali zakaj ne — konkretno>",
+      "visoko_tvegana_jurisdikcija": <true|false>,
+      "lastniška_struktura": "<ocena strukture: pregledna|nepregledna|ni podatkov>",
+      "opombe": "<morebitne posebnosti>",
+      "tveganje": "<nizko|srednje|visoko>"
+    }
+  ],
+  "aml_indikatorji": [
+    {
+      "tip": "<proof_of_funds|lastniška_struktura|jurisdikcija|gotovinska_intenzivnost|anonimnost|nujnost|corporate_structure>",
+      "prisoten": <true|false>,
+      "opis": "<kaj konkretno kaže na ta indikator — ali zakaj ni tveganja>",
+      "tveganje": "<nizko|srednje|visoko>"
+    }
+  ],
+  "skupno_tveganje": "<nizko|srednje|visoko>",
+  "skupna_razlaga": "<2–3 stavki: skupna ocena tveganja z najpomembnejšimi razlogi>"
+}
+
+Pravila:
+- PEP = politik, javni funkcionar, vodilni v državnem podjetju, ali njihov bližnji sorodnik/poslovni partner
+- Visoko tveganje AML: vsaj 2 visokorizična indikatorja ALI 1 kritičen (UAE/offshore lastnik, gotovina, anonimnost)
+- Srednje tveganje: 1 indikator ali nepregledna struktura
+- Vse 7 AML indikatorjev mora biti ocenjenih (prisoten: true/false)"""
+
+    user = f"""ENTITETE IN AJPES PODATKI:
+{entities_block}
+
+TIP STRANKE (iz maila): {tip_stranke}
+PRAVNO PODROČJE: {analysis.get('legal_field', '—')}
+POVZETEK ZADEVE: {analysis.get('povzetek', '—')}
+{jurisdiction_hint}
+
+RELEVANTNI DELI EMAILA:
+{email_text[:3000]}"""
+
+    resp = openai_client.chat.completions.create(
+        model="gpt-5.4",
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        response_format={"type": "json_object"},
+        temperature=0.1,
+    )
+    result = json.loads(resp.choices[0].message.content)
+    # Ensure skupno_tveganje is propagated back to top-level analysis fields
+    result.setdefault("skupno_tveganje", "nizko")
+    result.setdefault("skupna_razlaga", "")
+    result.setdefault("kyc_entitete", [])
+    result.setdefault("aml_indikatorji", [])
+    return result
 
 
 # ── Tax-Fin-Lex integration ───────────────────────────────────────────────────
@@ -288,7 +463,7 @@ def tfl_ask(question: str, max_tokens: int = 800) -> dict:
             if t == "token":
                 tokens.append(ev["data"]["text"])
             elif t == "sources":
-                sources = ev["data"]
+                sources = [_tfl_fix_url(s) for s in (ev["data"] or [])]
 
         full = "".join(tokens)
         # Strip "## Razmišljanje" preamble — keep only the final answer
@@ -320,6 +495,76 @@ def tfl_answer_questions(questions: list, legal_field: str) -> list:
     return qa_blocks
 
 
+def _parse_numbered_list(text: str) -> list[str]:
+    """Extract items from a numbered list (1. item, 2) item, etc.)."""
+    items = []
+    for line in text.splitlines():
+        m = re.match(r'^\s*\d+[\.\)]\s*(.+)', line.strip())
+        if m:
+            items.append(m.group(1).strip())
+    return items
+
+
+def tfl_generate_questions(legal_field: str, summary: str, jezik: str = 'sl') -> list[str]:
+    """Ask TFL to generate 3–5 follow-up questions for this matter."""
+    lang = "v angleščini" if jezik == 'en' else "v slovenščini"
+    question = (
+        f"Za pravno zadevo s področja '{legal_field}': {summary}\n\n"
+        f"Navedi 3–5 najpomembnejših usmerjevalnih vprašanj, ki jih mora odvetnik zastaviti stranki "
+        f"za pridobitev vseh bistvenih informacij. "
+        f"Odgovori SAMO z oštevilčenim seznamom vprašanj (format: '1. Vprašanje?'), brez uvoda. "
+        f"Vprašanja napiši {lang}."
+    )
+    result = tfl_ask(question, max_tokens=400)
+    return _parse_numbered_list(result["answer"])[:5]
+
+
+def tfl_generate_aml_checklist(
+    legal_field: str, summary: str, entities: dict, aml_level: str, jezik: str = 'sl'
+) -> list[str]:
+    """Ask TFL to generate ZPPDFT-2 documentation checklist for this matter."""
+    entity_list = (
+        entities.get("stranke", []) +
+        entities.get("nasprotna_stran", []) +
+        entities.get("ostali_upleteni", [])
+    )
+    entity_str = ", ".join(entity_list[:5]) if entity_list else "—"
+    lang = "v angleščini" if jezik == 'en' else "v slovenščini"
+    question = (
+        f"Za pravno zadevo s področja '{legal_field}' (tveganje AML: {aml_level}): {summary}\n"
+        f"Vpletene entitete: {entity_str}\n\n"
+        f"Katera dokumentacija je obvezna po ZPPDFT-2 za tovrstno zadevo? "
+        f"Navedi konkretne dokumente z imeni entitet kjer relevantno. "
+        f"Odgovori SAMO z oštevilčenim seznamom dokumentov (format: '1. Dokument'), brez uvoda. "
+        f"Dokumenti naj bodo {lang}."
+    )
+    result = tfl_ask(question, max_tokens=400)
+    return _parse_numbered_list(result["answer"])[:12]
+
+
+def tfl_get_statutory_deadline(legal_field: str, summary: str) -> dict:
+    """Ask TFL for the statutory deadline (in days) for this type of matter.
+    Returns {days: int|None, basis: str, sources: []}."""
+    question = (
+        f"Za pravno zadevo s področja '{legal_field}': {summary}\n\n"
+        "Kateri je najkrajši obvezni zakonski rok, ki ga določa slovensko pravo za tovrstno zadevo "
+        "(npr. od sprožilnega dogodka do izpolnitve obveznosti)?\n"
+        "Odgovori OBVEZNO v tem formatu in samo tako:\n"
+        "ROK: [število] dni | OSNOVA: [zakon in člen]\n"
+        "Primer: ROK: 72 dni | OSNOVA: GDPR čl. 33\n"
+        "Če zakonskega roka ni: ROK: ni | OSNOVA: -"
+    )
+    result = tfl_ask(question, max_tokens=200)
+    answer = result["answer"]
+    m = re.search(r'ROK:\s*(\d+)\s*dni', answer, re.IGNORECASE)
+    basis_m = re.search(r'OSNOVA:\s*(.+)', answer, re.IGNORECASE)
+    return {
+        "days": int(m.group(1)) if m else None,
+        "basis": basis_m.group(1).strip() if basis_m else "",
+        "sources": result["sources"][:2],
+    }
+
+
 _TFL_URL_MAP = {
     "legislation": "/Zakonodaja/Podrobnosti/{}",
     "court":       "/SodnaPraksa/Podrobnosti/{}",
@@ -328,11 +573,12 @@ _TFL_URL_MAP = {
 
 
 def _tfl_fix_url(item: dict) -> dict:
-    """Rewrite API-path URLs to correct TFL web URLs using entityId + type."""
+    """Rewrite API-path URLs and attach is_valid flag."""
     entity_id = item.get("id") or item.get("entityId", "")
     item_type = item.get("type", "")
     if entity_id and item_type in _TFL_URL_MAP:
         item["url"] = _TFL_URL_MAP[item_type].format(entity_id)
+    item["is_valid"] = _tfl_is_valid(item)
     return item
 
 
@@ -355,12 +601,29 @@ def tfl_get_deadline_info(legal_field: str, summary: str) -> dict:
     }
 
 
+def _tfl_is_valid(item: dict) -> bool:
+    """Return True if a TFL item appears to be currently valid legislation."""
+    # Check explicit validity/status fields TFL may return
+    status = (item.get("status") or item.get("veljavnost") or "").lower()
+    if status and any(s in status for s in ("neveljavni", "prenehal", "archived", "expired", "razveljavljen")):
+        return False
+    # Check validTo date field
+    valid_to = item.get("validTo") or item.get("veljavnoDo") or item.get("datumPrenehanja") or ""
+    if valid_to:
+        try:
+            if valid_to[:10] < date.today().isoformat():
+                return False
+        except Exception:
+            pass
+    return True
+
+
 def tfl_search(query: str, types: list | None = None) -> list:
-    """Semantic search over TFL legal database."""
+    """Semantic search over TFL legal database — only currently valid documents."""
     if not TFL_API_KEY:
         return []
     try:
-        payload = {"query": query}
+        payload = {"query": query, "veljavnost": "veljavni"}  # ask TFL for valid-only
         if types:
             payload["types"] = types
         resp = requests.post(
@@ -370,8 +633,11 @@ def tfl_search(query: str, types: list | None = None) -> list:
             timeout=20,
         )
         data = resp.json()
-        items = data.get("data", {}).get("items", [])[:5]
-        return [_tfl_fix_url(i) for i in items]
+        # Fetch more items than needed so we can filter
+        items = data.get("data", {}).get("items", [])[:10]
+        # Filter client-side as well (in case TFL ignores the veljavnost param)
+        valid = [i for i in items if _tfl_is_valid(i)]
+        return [_tfl_fix_url(i) for i in valid[:5]]
     except Exception:
         return []
 
@@ -545,27 +811,88 @@ async def process_email(
     selected_ids = llm_select_cases(analysis, cases)
     selected_cases = [c for c in cases if c["id"] in selected_ids]
 
-    # Call 3 — generate draft (GPT-4o)
+    jezik = analysis.get("jezik", "sl")
+    legal_field = analysis.get("legal_field", "")
+    povzetek = analysis.get("povzetek", "")
+    entitete = analysis.get("entitete", {})
+    tip_stranke = analysis.get("tip_stranke", "pravna")
+
+    # ── AJPES lookups (parallel, non-blocking) ────────────────────────────────
+    # Collect all legal-entity candidates (skip natural-person-like names)
+    all_entity_names = list({
+        e for group in entitete.values() for e in group if e and len(e) > 2
+    })
+    ajpes_data: dict = {}
+    if all_entity_names:
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            futures = {pool.submit(ajpes_lookup, name): name for name in all_entity_names[:6]}
+            for fut, name in futures.items():
+                result = fut.result()
+                if result:
+                    ajpes_data[name] = result
+
+    # ── TFL + KYC/AML parallel group ─────────────────────────────────────────
+    tfl_questions: list[str] = []
+    tfl_aml_checklist: list[str] = []
+    tfl_refs: list = []
+    tfl_statutory: dict = {}
+    kyc_aml: dict = {}
+
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        fut_kyc = pool.submit(
+            llm_kyc_aml_assessment, entitete, full_email, analysis, ajpes_data, tip_stranke
+        )
+        if TFL_API_KEY:
+            fut_q   = pool.submit(tfl_generate_questions, legal_field, povzetek, jezik)
+            fut_ref = pool.submit(tfl_search, povzetek, ["act", "court"])
+            fut_rok = pool.submit(tfl_get_statutory_deadline, legal_field, povzetek)
+
+        kyc_aml = fut_kyc.result()
+        aml_level = kyc_aml.get("skupno_tveganje", "nizko")
+
+        if TFL_API_KEY:
+            tfl_questions = fut_q.result()
+            tfl_refs      = fut_ref.result()
+            tfl_statutory = fut_rok.result()
+            # AML checklist uses the LLM-assessed risk level
+            tfl_aml_checklist = tfl_generate_aml_checklist(
+                legal_field, povzetek, entitete, aml_level, jezik
+            )
+
+    # Compute effective deadline: min(statutory_remaining, client_days)
+    rok_raw = analysis.get("rok", {})
+    statutory_days  = tfl_statutory.get("days")       # total legal period
+    preteklo        = rok_raw.get("preteklo_dni")      # days already elapsed
+    stranka_days    = rok_raw.get("stranka_cas_dni")   # what client said
+    zakonski_preostali = (statutory_days - preteklo) if (statutory_days and preteklo is not None) else statutory_days
+    candidates = [d for d in [zakonski_preostali, stranka_days] if d is not None and d > 0]
+    cas_dni = min(candidates) if candidates else None
+    analysis["rok"] = {
+        **rok_raw,
+        "cas_dni": cas_dni,
+        "zakonski_limit_dni": statutory_days,
+        "zakonski_osnova": tfl_statutory.get("basis", ""),
+        "zakonski_preostali": zakonski_preostali,
+    }
+    if cas_dni is not None:
+        analysis["rok"]["nujno"] = True
+
+    # Store results — keep aml_tveganje at top level for backwards compat
+    analysis["aml_tveganje"] = aml_level
+    analysis["aml_razlaga"]  = kyc_aml.get("skupna_razlaga", "")
+    analysis["kyc_aml"]      = kyc_aml
+    analysis["ajpes_data"]   = ajpes_data
+    analysis["dodatna_vprasanja"] = tfl_questions
+    analysis["aml_checklist"] = tfl_aml_checklist
+
+    # Call 3 — generate draft (GPT-4o) — uses updated analysis with TFL questions
     draft_result = llm_generate_draft(full_email, analysis, selected_cases)
 
-    # Call 4 — answer Q&A blocks with TFL (Gemini 2.5 Pro + Slovenian law DB)
-    questions = analysis.get("dodatna_vprasanja", [])
-    if TFL_API_KEY and questions:
-        tfl_qa = tfl_answer_questions(questions, analysis.get("legal_field", ""))
+    # Call 4 — answer each TFL-generated question via TFL
+    if TFL_API_KEY and tfl_questions:
+        tfl_qa = tfl_answer_questions(tfl_questions, legal_field)
     else:
-        tfl_qa = draft_result.get("qa_blocks", [])
-
-    # Call 5 — TFL semantic search for legal context
-    tfl_refs = []
-    if TFL_API_KEY and analysis.get("povzetek"):
-        tfl_refs = tfl_search(analysis["povzetek"], types=["act", "court"])
-
-    # Call 6 — TFL statutory deadline analysis
-    tfl_deadline = {}
-    if TFL_API_KEY and analysis.get("legal_field") and analysis.get("povzetek"):
-        tfl_deadline = tfl_get_deadline_info(
-            analysis["legal_field"], analysis["povzetek"]
-        )
+        tfl_qa = []
 
     record = {
         "id": str(uuid.uuid4()),
@@ -583,7 +910,6 @@ async def process_email(
         "citations": draft_result.get("citations", {}),
         "qa_blocks": tfl_qa,
         "tfl_refs": tfl_refs,
-        "tfl_deadline": tfl_deadline,
         "selected_cases": selected_cases,
         "status": "new",
     }
