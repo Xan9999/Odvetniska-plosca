@@ -4,10 +4,11 @@ import uuid
 import pathlib
 from datetime import datetime
 
+import requests
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from openai import OpenAI
 from pydantic import BaseModel
@@ -20,6 +21,10 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 openai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+TFL_API_KEY = os.environ.get("TFL_API_KEY", "")
+TFL_BASE = "https://www.tax-fin-lex.si/api/v1"
+TFL_HEADERS = {"X-Api-Key": TFL_API_KEY, "Content-Type": "application/json"}
 
 DB = pathlib.Path("db")
 EMAILS_FILE = DB / "emails.json"
@@ -97,10 +102,10 @@ Vrni ta JSON:
   "aml_checklist": ["<dokument 1 — V JEZIKU MAILA>", "<dokument 2>", ...]
 }}
 
-JEZIK: Polji "dodatna_vprasanja" IN "aml_checklist" morata biti v ISTEM JEZIKU KOT E-MAIL.
-- Če je mail v angleščini → oba polji v angleščini
-- Če je mail v slovenščini → oba polji v slovenščini
-- Če je mešan (sl-en) → slovenščina
+⚠️ JEZIK — OBVEZNO: Polji "dodatna_vprasanja" IN "aml_checklist" morata biti IZKLJUČNO v ISTEM JEZIKU KOT E-MAIL.
+- Mail v slovenščini → oba polji SAMO v slovenščini, nobena beseda v angleščini
+- Mail v angleščini → oba polji SAMO v angleščini
+- Mešan mail (sl-en) → slovenščina
 
 Pri aml_checklist upoštevaj konkretne okoliščine zadeve (ne le splošni seznam). Osnova glede na tveganje:
 - nizko: identity document / court registry extract, UBO declaration
@@ -245,6 +250,105 @@ RELEVANTNI PRIMERI IZ BAZE:
     return json.loads(resp.choices[0].message.content)
 
 
+# ── Tax-Fin-Lex integration ───────────────────────────────────────────────────
+
+def tfl_ask(question: str, max_tokens: int = 800) -> dict:
+    """Call TFL /ai/ask, collect SSE stream, return {answer, sources}."""
+    if not TFL_API_KEY:
+        return {"answer": "", "sources": []}
+    try:
+        resp = requests.post(
+            f"{TFL_BASE}/ai/ask",
+            headers={**TFL_HEADERS, "Accept": "text/event-stream"},
+            json={"question": question, "maxTokens": max_tokens},
+            stream=True,
+            timeout=60,
+        )
+        tokens, sources = [], []
+        for raw in resp.iter_lines():
+            line = raw.decode("utf-8") if isinstance(raw, bytes) else raw
+            if not line.startswith("data: "):
+                continue
+            data_str = line[6:]
+            if data_str == "[DONE]":
+                break
+            try:
+                ev = json.loads(data_str)
+            except json.JSONDecodeError:
+                continue
+            t = ev.get("type")
+            if t == "token":
+                tokens.append(ev["data"]["text"])
+            elif t == "sources":
+                sources = ev["data"]
+
+        full = "".join(tokens)
+        # Strip "## Razmišljanje" preamble — keep only the final answer
+        if "## Končni odgovor:" in full:
+            full = full.split("## Končni odgovor:", 1)[1].strip()
+        # Strip trailing "Ključni dokumenti" section (we show sources separately)
+        for marker in ["#### Ključni dokumenti", "### Ključni dokumenti", "**Ključni dokumenti"]:
+            if marker in full:
+                full = full.split(marker, 1)[0].strip()
+        return {"answer": full, "sources": sources[:5]}  # max 5 sources
+    except Exception:
+        return {"answer": "", "sources": []}
+
+
+def tfl_answer_questions(questions: list, legal_field: str) -> list:
+    """For each question ask TFL and return qa_blocks with real sources."""
+    qa_blocks = []
+    for q in questions[:3]:  # max 3 to stay within rate limits
+        prompt = (
+            f"{q} (področje: {legal_field}). "
+            "Odgovori jedrnato v 3–5 stavkih brez emotikonov in brez razdelkov s poudarjenimi naslovi."
+        )
+        result = tfl_ask(prompt, max_tokens=400)
+        qa_blocks.append({
+            "vprasanje": q,
+            "odgovor": result["answer"],
+            "sources": result["sources"],
+        })
+    return qa_blocks
+
+
+_TFL_URL_MAP = {
+    "legislation": "/Zakonodaja/Podrobnosti/{}",
+    "court":       "/SodnaPraksa/Podrobnosti/{}",
+    "publication": "/Publikacije/Podrobnosti/{}",
+}
+
+
+def _tfl_fix_url(item: dict) -> dict:
+    """Rewrite API-path URLs to correct TFL web URLs using entityId + type."""
+    entity_id = item.get("id") or item.get("entityId", "")
+    item_type = item.get("type", "")
+    if entity_id and item_type in _TFL_URL_MAP:
+        item["url"] = _TFL_URL_MAP[item_type].format(entity_id)
+    return item
+
+
+def tfl_search(query: str, types: list | None = None) -> list:
+    """Semantic search over TFL legal database."""
+    if not TFL_API_KEY:
+        return []
+    try:
+        payload = {"query": query}
+        if types:
+            payload["types"] = types
+        resp = requests.post(
+            f"{TFL_BASE}/search",
+            headers=TFL_HEADERS,
+            json=payload,
+            timeout=20,
+        )
+        data = resp.json()
+        items = data.get("data", {}).get("items", [])[:5]
+        return [_tfl_fix_url(i) for i in items]
+    except Exception:
+        return []
+
+
 # ── Conflict check ─────────────────────────────────────────────────────────────
 
 CONFLICT_THRESHOLD = 80
@@ -373,8 +477,20 @@ def process_email(submission: EmailIn):
     selected_ids = llm_select_cases(analysis, cases)
     selected_cases = [c for c in cases if c["id"] in selected_ids]
 
-    # Call 3 — generate draft
+    # Call 3 — generate draft (GPT-4o)
     draft_result = llm_generate_draft(full_email, analysis, selected_cases)
+
+    # Call 4 — answer Q&A blocks with TFL (Gemini 2.5 Pro + Slovenian law DB)
+    questions = analysis.get("dodatna_vprasanja", [])
+    if TFL_API_KEY and questions:
+        tfl_qa = tfl_answer_questions(questions, analysis.get("legal_field", ""))
+    else:
+        tfl_qa = draft_result.get("qa_blocks", [])
+
+    # Call 5 — TFL semantic search for legal context
+    tfl_refs = []
+    if TFL_API_KEY and analysis.get("povzetek"):
+        tfl_refs = tfl_search(analysis["povzetek"], types=["act", "court"])
 
     record = {
         "id": str(uuid.uuid4()),
@@ -389,7 +505,8 @@ def process_email(submission: EmailIn):
         "conflict": conflict,
         "draft": draft_result.get("draft", ""),
         "citations": draft_result.get("citations", {}),
-        "qa_blocks": draft_result.get("qa_blocks", []),
+        "qa_blocks": tfl_qa,
+        "tfl_refs": tfl_refs,
         "selected_cases": selected_cases,
         "status": "new",
     }
@@ -447,3 +564,70 @@ def update_status(email_id: str, status: str):
 def delete_all_emails():
     save_emails([])
     return {"ok": True}
+
+
+@app.get("/api/tfl/doc")
+def tfl_doc(id: str, type: str = "legislation"):
+    """Fetch a TFL document (legislation or court decision) via API and return content."""
+    if not TFL_API_KEY:
+        raise HTTPException(status_code=503, detail="TFL API key not configured")
+    try:
+        if type == "court":
+            resp = requests.get(f"{TFL_BASE}/court-decisions/{id}", headers=TFL_HEADERS, timeout=20)
+            data = resp.json().get("data", {})
+            return {
+                "title": data.get("title", ""),
+                "type": "court",
+                "court": data.get("court", ""),
+                "date": (data.get("documentDate") or "")[:10],
+                "summary_q": data.get("summaryQuestion", ""),
+                "summary_a": data.get("summaryAnswer", ""),
+                "keywords": data.get("keywords", ""),
+                "text": (data.get("text") or "")[:4000],  # cap at 4000 chars
+            }
+        else:
+            resp = requests.get(f"{TFL_BASE}/legislation/{id}", headers=TFL_HEADERS, timeout=20)
+            data = resp.json().get("data", {})
+            articles = data.get("articles", [])
+            return {
+                "title": data.get("title", ""),
+                "type": "legislation",
+                "abbreviation": data.get("abbreviation", ""),
+                "article_count": data.get("articleCount", 0),
+                "articles": [
+                    {"mark": a.get("mark", ""), "content": a.get("content", "")}
+                    for a in articles[:15]
+                ],
+            }
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
+class TflAskIn(BaseModel):
+    question: str
+    max_tokens: int = 1500
+
+
+@app.post("/api/tfl/ask")
+def tfl_ask_proxy(body: TflAskIn):
+    """Stream TFL /ai/ask response directly to frontend (SSE)."""
+    if not TFL_API_KEY:
+        raise HTTPException(status_code=503, detail="TFL API key not configured")
+
+    def generate():
+        try:
+            resp = requests.post(
+                f"{TFL_BASE}/ai/ask",
+                headers={**TFL_HEADERS, "Accept": "text/event-stream"},
+                json={"question": body.question, "maxTokens": body.max_tokens},
+                stream=True,
+                timeout=60,
+            )
+            for raw in resp.iter_lines():
+                line = raw.decode("utf-8") if isinstance(raw, bytes) else raw
+                if line:
+                    yield line + "\n\n"
+        except Exception as e:
+            yield f'data: {{"type":"error","data":{{"message":"{str(e)}"}}}}\n\n'
+
+    return StreamingResponse(generate(), media_type="text/event-stream")

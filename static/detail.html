@@ -45,7 +45,7 @@
       opacity: 0;
       transition: opacity 0.1s;
     }
-    #hover-popover.visible { opacity: 1; }
+    #hover-popover.visible { opacity: 1; pointer-events: auto; }
 
     /* ── Draft paragraphs ── */
     .draft-body p { margin-bottom: 0.85rem; line-height: 1.75; }
@@ -102,9 +102,27 @@
     <div id="pop-qa" class="hidden">
       <div class="flex items-center gap-2 mb-1.5">
         <span class="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">Vprašanje stranke</span>
-        <span id="pop-qa-vir" class="hidden text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded px-2 py-0.5"></span>
       </div>
-      <p id="pop-qa-text" class="text-xs text-slate-700 leading-relaxed italic"></p>
+      <p id="pop-qa-text" class="text-xs text-slate-700 leading-relaxed italic mb-2"></p>
+      <div id="pop-qa-sources" class="hidden space-y-1"></div>
+    </div>
+  </div>
+
+  <!-- TFL document modal -->
+  <div id="tfl-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeTflModal()"></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+      <div class="flex items-start justify-between px-6 py-4 border-b border-slate-100">
+        <div>
+          <p id="tfl-modal-type" class="text-xs text-slate-400 mb-0.5"></p>
+          <h2 id="tfl-modal-title" class="font-semibold text-slate-800 text-sm leading-snug"></h2>
+          <p id="tfl-modal-meta" class="text-xs text-slate-400 mt-0.5"></p>
+        </div>
+        <button onclick="closeTflModal()" class="text-slate-400 hover:text-slate-700 ml-4 shrink-0 text-lg leading-none">&times;</button>
+      </div>
+      <div id="tfl-modal-body" class="overflow-y-auto px-6 py-4 text-xs text-slate-700 leading-relaxed">
+        <p class="text-slate-400 italic">Nalagam…</p>
+      </div>
     </div>
   </div>
 
@@ -316,6 +334,30 @@
         <ul id="questions-list" class="space-y-2.5"></ul>
       </div>
 
+      <!-- TFL legal references -->
+      <div id="tfl-refs-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Relevantni pravni viri</h3>
+        <ul id="tfl-refs-list" class="space-y-2"></ul>
+      </div>
+
+      <!-- TFL legal Q&A chat -->
+      <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+        <div class="flex items-center gap-2 mb-3">
+          <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Pravna baza</h3>
+          <span class="text-xs text-slate-400 bg-slate-100 rounded px-1.5 py-0.5">Tax-Fin-Lex</span>
+        </div>
+        <div id="tfl-chat-messages" class="space-y-3 mb-3 max-h-72 overflow-y-auto"></div>
+        <div class="flex gap-1.5">
+          <input id="tfl-input" type="text" placeholder="Vprašaj pravno bazo…"
+            class="flex-1 text-xs border border-slate-200 rounded-md px-2.5 py-2 focus:outline-none focus:border-indigo-400"
+            onkeydown="if(event.key==='Enter') tflAsk()" />
+          <button onclick="tflAsk()"
+            class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-md font-medium transition-colors shrink-0">
+            Pošlji
+          </button>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -384,6 +426,7 @@
       renderAmlChecklist(r.analysis || {});
       renderTeamPanels();
       renderQuestionsPanel();
+      renderTflRefs(r.tfl_refs || []);
       checkExperienceWarning();
       rebuildDraft();
 
@@ -578,8 +621,10 @@
 
       wrapper.addEventListener('mouseleave', () => {
         currentHover = null;
-        hidePopover();
-        document.querySelectorAll('.cited-sentence,.qa-item').forEach(x => x.classList.remove('active'));
+        if (!popoverHovered) {
+          hidePopover();
+          document.querySelectorAll('.cited-sentence,.qa-item').forEach(x => x.classList.remove('active'));
+        }
       });
     }
 
@@ -618,13 +663,34 @@
       document.getElementById('pop-qa').classList.remove('hidden');
       document.getElementById('pop-cite').classList.add('hidden');
       document.getElementById('pop-qa-text').textContent = qa.vprasanje || '';
-      // vir_namig hidden until legal DB integration
-      document.getElementById('pop-qa-vir').classList.add('hidden');
+
+      const srcEl = document.getElementById('pop-qa-sources');
+      const srcs = qa.sources || [];
+      if (srcs.length) {
+        srcEl.classList.remove('hidden');
+        srcEl.innerHTML = '<p class="text-xs text-slate-400 mb-1">Viri (Tax-Fin-Lex):</p>' +
+          srcs.map(s => tflSourceBtn(s)).join('');
+      } else {
+        srcEl.classList.add('hidden');
+      }
+
       positionPopover(anchorEl);
       pop.classList.add('visible');
     }
 
+    let popoverHovered = false;
+
+    document.getElementById('hover-popover').addEventListener('mouseenter', () => {
+      popoverHovered = true;
+    });
+    document.getElementById('hover-popover').addEventListener('mouseleave', () => {
+      popoverHovered = false;
+      hidePopover();
+      document.querySelectorAll('.cited-sentence,.qa-item').forEach(x => x.classList.remove('active'));
+    });
+
     function hidePopover() {
+      if (popoverHovered) return;
       document.getElementById('hover-popover').classList.remove('visible');
     }
 
@@ -893,12 +959,12 @@
       const clientName = record?.sender?.name || 'spoštovani';
       let body;
       if (!reasons.length) {
-        body = `Spoštovani ${clientName},\n\nzahvaljujemo se vam za zaupanje in vaš elektronski dopis. Po pregledu vaše zadeve vas z obžalovanjem obveščamo, da vašega naročila žal ne moremo sprejeti.\n\nZa morebitna vprašanja smo vam na voljo.\n\nS spoštovanjem,\n[Vaše ime]\nJadek & Pensa, odvetniška pisarna d.o.o.`;
+        body = `Spoštovani ${clientName},\n\nzahvaljujemo se vam za zaupanje in vaš elektronski dopis. Po pregledu vaše zadeve vas z obžalovanjem obveščamo, da vašega naročila žal ne moremo sprejeti.\n\nZa morebitna vprašanja smo vam na voljo.\n\nS spoštovanjem,\n${LOGGED_IN.name}\nJadek & Pensa, odvetniška pisarna d.o.o.`;
       } else {
         const reasonStr = reasons.length === 1
           ? reasons[0]
           : reasons.slice(0, -1).join(', ') + ' in ' + reasons[reasons.length - 1];
-        body = `Spoštovani ${clientName},\n\nzahvaljujemo se vam za zaupanje in vaš elektronski dopis. Po pregledu vaše zadeve vas z obžalovanjem obveščamo, da vašega naročila žal ne moremo sprejeti zaradi ${reasonStr}.\n\nPriporočamo vam, da se obrnete na drugega pravnega svetovalca.\n\nZa morebitna vprašanja smo vam na voljo.\n\nS spoštovanjem,\n[Vaše ime]\nJadek & Pensa, odvetniška pisarna d.o.o.`;
+        body = `Spoštovani ${clientName},\n\nzahvaljujemo se vam za zaupanje in vaš elektronski dopis. Po pregledu vaše zadeve vas z obžalovanjem obveščamo, da vašega naročila žal ne moremo sprejeti zaradi ${reasonStr}.\n\nPriporočamo vam, da se obrnete na drugega pravnega svetovalca.\n\nZa morebitna vprašanja smo vam na voljo.\n\nS spoštovanjem,\n${LOGGED_IN.name}\nJadek & Pensa, odvetniška pisarna d.o.o.`;
       }
       return body.split('\n').map(line => `<p>${esc(line) || '&nbsp;'}</p>`).join('');
     }
@@ -1017,6 +1083,153 @@
         ${checklistHtml}
       `;
       window.print();
+    }
+
+    // ── TFL document modal ───────────────────────────────────────────────────
+    function openTflDoc(id, type) {
+      const modal = document.getElementById('tfl-modal');
+      modal.classList.remove('hidden');
+      document.getElementById('tfl-modal-body').innerHTML = '<p class="text-slate-400 italic">Nalagam…</p>';
+      document.getElementById('tfl-modal-title').textContent = '';
+      document.getElementById('tfl-modal-meta').textContent = '';
+      document.getElementById('tfl-modal-type').textContent = '';
+
+      fetch(`/api/tfl/doc?id=${encodeURIComponent(id)}&type=${encodeURIComponent(type)}`)
+        .then(r => r.json())
+        .then(d => {
+          const typeLabel = d.type === 'court' ? '⚖️ Sodna odločba' : '📄 Zakonodaja';
+          document.getElementById('tfl-modal-type').textContent = typeLabel;
+          document.getElementById('tfl-modal-title').textContent = d.title || '—';
+
+          if (d.type === 'court') {
+            const meta = [d.court, d.date].filter(Boolean).join(' · ');
+            document.getElementById('tfl-modal-meta').textContent = meta;
+            let html = '';
+            if (d.summary_q) html += `<p class="font-semibold text-slate-600 mb-1">Vprašanje:</p><p class="mb-3">${esc(d.summary_q)}</p>`;
+            if (d.summary_a) html += `<p class="font-semibold text-slate-600 mb-1">Odgovor:</p><p class="mb-3">${esc(d.summary_a)}</p>`;
+            if (d.keywords)  html += `<p class="text-slate-400 mt-2">Ključne besede: ${esc(d.keywords)}</p>`;
+            if (d.text)      html += `<hr class="my-3 border-slate-100"><div>${d.text}</div>`;
+            document.getElementById('tfl-modal-body').innerHTML = html || '<p class="text-slate-400">(Ni vsebine)</p>';
+          } else {
+            const meta = [d.abbreviation, d.article_count ? `${d.article_count} členov` : ''].filter(Boolean).join(' · ');
+            document.getElementById('tfl-modal-meta').textContent = meta;
+            const arts = d.articles || [];
+            document.getElementById('tfl-modal-body').innerHTML = arts.length
+              ? arts.map(a => `<div class="mb-4"><p class="font-semibold text-slate-700 mb-1">${esc(a.mark)}</p><div class="leading-relaxed">${a.content}</div></div>`).join('')
+              : '<p class="text-slate-400">(Ni vsebine)</p>';
+          }
+        })
+        .catch(() => {
+          document.getElementById('tfl-modal-body').textContent = 'Napaka pri nalaganju dokumenta.';
+        });
+    }
+
+    function closeTflModal() {
+      document.getElementById('tfl-modal').classList.add('hidden');
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeTflModal();
+    });
+
+    // Build source button HTML from a TFL source object
+    function tflSourceBtn(s) {
+      const icon = s.type === 'court' ? '⚖️' : '📄';
+      const id = s.entityId || s.id || '';
+      const type = s.type === 'court' ? 'court' : 'legislation';
+      return `<button onclick="openTflDoc('${id}','${type}')"
+        class="block text-left text-xs text-blue-600 hover:text-blue-800 hover:underline leading-snug w-full truncate">
+        ${icon} ${esc(s.title)}
+      </button>`;
+    }
+
+    // ── TFL legal refs ────────────────────────────────────────────────────────
+    function renderTflRefs(refs) {
+      if (!refs || !refs.length) return;
+      const card = document.getElementById('tfl-refs-card');
+      const list = document.getElementById('tfl-refs-list');
+      card.classList.remove('hidden');
+      list.innerHTML = refs.map(r => `<li>${tflSourceBtn(r)}</li>`).join('');
+    }
+
+    // ── TFL chat ──────────────────────────────────────────────────────────────
+    async function tflAsk() {
+      const input = document.getElementById('tfl-input');
+      const q = input.value.trim();
+      if (!q) return;
+      input.value = '';
+
+      const msgs = document.getElementById('tfl-chat-messages');
+
+      // User bubble
+      msgs.insertAdjacentHTML('beforeend', `
+        <div class="flex justify-end">
+          <p class="text-xs bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2 max-w-[90%] text-slate-700">${esc(q)}</p>
+        </div>`);
+
+      // Answer bubble (streaming)
+      const answerId = 'tfl-ans-' + Date.now();
+      const sourcesId = 'tfl-src-' + Date.now();
+      msgs.insertAdjacentHTML('beforeend', `
+        <div class="space-y-1.5">
+          <div class="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 leading-relaxed whitespace-pre-wrap" id="${answerId}">
+            <span class="text-slate-400 animate-pulse">…</span>
+          </div>
+          <div id="${sourcesId}" class="hidden space-y-1 px-1"></div>
+        </div>`);
+      msgs.scrollTop = msgs.scrollHeight;
+
+      try {
+        const res = await fetch('/api/tfl/ask', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ question: q }),
+        });
+
+        const ansEl = document.getElementById(answerId);
+        const srcEl = document.getElementById(sourcesId);
+        let text = '';
+        let finalAnswer = '';
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+
+        while (true) {
+          const {done, value} = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, {stream: true});
+          const lines = buf.split('\n');
+          buf = lines.pop();
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const raw = line.slice(6).trim();
+            if (raw === '[DONE]') continue;
+            try {
+              const ev = JSON.parse(raw);
+              if (ev.type === 'token') {
+                text += ev.data.text;
+                // Show only final answer section
+                let display = text;
+                if (display.includes('## Končni odgovor:')) {
+                  display = display.split('## Končni odgovor:')[1].trimStart();
+                } else if (display.includes('## Razmišljanje:')) {
+                  display = '…';
+                }
+                ansEl.textContent = display;
+                msgs.scrollTop = msgs.scrollHeight;
+              } else if (ev.type === 'sources' && ev.data?.length) {
+                srcEl.classList.remove('hidden');
+                srcEl.innerHTML = '<p class="text-xs text-slate-400">Viri:</p>' +
+                  ev.data.slice(0,5).map(s => tflSourceBtn(s)).join('');
+              }
+            } catch {}
+          }
+        }
+      } catch (e) {
+        document.getElementById(answerId).textContent = 'Napaka pri klicu TFL API.';
+      }
     }
 
     // ── Util ──────────────────────────────────────────────────────────────────
