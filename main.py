@@ -566,6 +566,36 @@ def delete_all_emails():
     return {"ok": True}
 
 
+@app.get("/api/tfl/external-url")
+def tfl_external_url(id: str, type: str = "legislation"):
+    """Resolve a TFL entity ID to its canonical external URL (PISRS or sodnapraksa.si)."""
+    if not TFL_API_KEY:
+        raise HTTPException(status_code=503, detail="TFL API key not configured")
+    try:
+        if type == "court":
+            resp = requests.get(f"{TFL_BASE}/court-decisions/{id}", headers=TFL_HEADERS, timeout=15)
+            data = resp.json().get("data", {})
+            ecli = data.get("ecli", "")
+            if ecli:
+                url = f"https://sodnapraksa.si/?q=ecliid:{ecli}"
+            else:
+                # Fallback: sodnapraksa search by document title
+                title = data.get("title", "")
+                url = f"https://sodnapraksa.si/?q={requests.utils.quote(title)}"
+        else:
+            resp = requests.get(f"{TFL_BASE}/legislation/{id}/metadata", headers=TFL_HEADERS, timeout=15)
+            data = resp.json().get("data", {})
+            sop = (data.get("sop") or "").strip()
+            if sop:
+                url = f"https://www.pisrs.si/Pis.web/pregledPredpisa?sop={sop}"
+            else:
+                abbr = (data.get("abbreviation") or "").strip()
+                url = f"https://www.pisrs.si/Pis.web/pregled?besedilo={requests.utils.quote(abbr)}"
+        return {"url": url}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
 @app.get("/api/tfl/doc")
 def tfl_doc(id: str, type: str = "legislation"):
     """Fetch a TFL document (legislation or court decision) via API and return content."""

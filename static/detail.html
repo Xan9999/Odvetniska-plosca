@@ -1088,15 +1088,31 @@
       if (e.key === 'Escape') closeTflModal();
     });
 
-    // Build source button HTML from a TFL source object
+    // Build source button HTML from a TFL source object — opens pisrs.si / sodnapraksa.si
     function tflSourceBtn(s) {
       const icon = s.type === 'court' ? '⚖️' : '📄';
       const id = s.entityId || s.id || '';
       const type = s.type === 'court' ? 'court' : 'legislation';
-      return `<button onclick="openTflDoc('${id}','${type}')"
+      return `<button onclick="openTflExternal('${id}','${type}',this)"
         class="block text-left text-xs text-blue-600 hover:text-blue-800 hover:underline leading-snug w-full truncate">
         ${icon} ${esc(s.title)}
       </button>`;
+    }
+
+    async function openTflExternal(id, type, btn) {
+      const orig = btn.textContent;
+      btn.textContent = 'Nalagam…';
+      btn.disabled = true;
+      try {
+        const r = await fetch(`/api/tfl/external-url?id=${encodeURIComponent(id)}&type=${encodeURIComponent(type)}`);
+        const d = await r.json();
+        window.open(d.url, '_blank');
+      } catch {
+        alert('Napaka pri pridobivanju URL-ja.');
+      } finally {
+        btn.textContent = orig;
+        btn.disabled = false;
+      }
     }
 
     // ── TFL legal refs ────────────────────────────────────────────────────────
