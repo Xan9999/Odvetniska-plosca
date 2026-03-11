@@ -595,7 +595,7 @@ def tfl_doc(id: str, type: str = "legislation"):
                 "abbreviation": data.get("abbreviation", ""),
                 "article_count": data.get("articleCount", 0),
                 "articles": [
-                    {"mark": a.get("mark", ""), "content": a.get("content", "")}
+                    {"mark": a.get("mark", ""), "content": a.get("html", a.get("content", ""))}
                     for a in articles[:15]
                 ],
             }
