@@ -25,7 +25,10 @@ app = FastAPI(title="Jadek & Pensa — Sistem za sprejem strank")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-openai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+openai_client = OpenAI(
+    api_key=os.environ["OPENAI_API_KEY"],
+    base_url=os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+)
 
 TFL_API_KEY = os.environ.get("TFL_API_KEY", "")
 TFL_BASE = "https://www.tax-fin-lex.si/api/v1"
@@ -117,7 +120,7 @@ Vrni ta JSON:
 ⚠️ Vrni SAMO JSON brez kakršnega koli besedila zunaj JSON objekta."""
 
     resp = openai_client.chat.completions.create(
-        model="gpt-4o",
+        model="GPT 5.4",
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": f"E-mail:\n\n{email_text}"},
@@ -148,7 +151,7 @@ Razpoložljivi primeri:
 {cases_summary}"""
 
     resp = openai_client.chat.completions.create(
-        model="gpt-4o",
+        model="GPT 5.4",
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": user},
@@ -246,7 +249,7 @@ RELEVANTNI PRIMERI IZ BAZE:
 {cases_text}"""
 
     resp = openai_client.chat.completions.create(
-        model="gpt-4o",
+        model="GPT 5.4",
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": user},
