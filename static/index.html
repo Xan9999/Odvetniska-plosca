@@ -12,11 +12,8 @@
   <header class="h-14 bg-white flex items-center border-b border-slate-200 sticky top-0 z-20">
     <div class="w-full px-6 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 bg-slate-800 rounded-lg flex items-center justify-center">
-          <span class="text-white text-sm font-bold">J</span>
-        </div>
         <div>
-          <h1 class="text-slate-900 font-semibold text-base leading-tight">Jadek &amp; Pensa</h1>
+          <img src="/static/media/jadek_pensa_logo.jpg" alt="Jadek &amp; Pensa" class="h-8 w-auto" />
           <p class="text-slate-500 text-sm leading-tight">Sistem za sprejem strank</p>
         </div>
       </div>
@@ -62,9 +59,8 @@
         <option value="lt1000">&lt; 1.000 €</option>
       </select>
       <select id="sort-by" class="bg-white text-sm px-2.5 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-500">
-        <option value="urgency_profit">Razvrsti: Nujnost → Profit</option>
-        <option value="profit_desc">Razvrsti: Profit (padajoče)</option>
-        <option value="profit_asc">Razvrsti: Profit (naraščajoče)</option>
+        <option value="profit_desc">Razvrsti: Profit ↓</option>
+        <option value="profit_asc">Razvrsti: Profit ↑</option>
       </select>
     </div>
   </div>
@@ -75,7 +71,7 @@
         <h2 class="text-slate-900 font-semibold text-base tracking-wide uppercase">Poizvedbe strank
           <span id="count-badge" class="ml-2 badge border border-slate-200 text-slate-500"></span>
         </h2>
-        <p id="sort-hint" class="text-slate-500 text-sm">Razvrščeno po nujnosti in profitu</p>
+        <p id="sort-hint" class="text-slate-500 text-sm">Razvrščeno po profitu</p>
       </div>
 
     <div id="loading-state" class="hidden text-center py-16 text-slate-400">
@@ -254,13 +250,14 @@
     }
 
     function sortEmails(emails) {
-      const mode = document.getElementById('sort-by')?.value ?? 'urgency_profit';
+      let mode = document.getElementById('sort-by')?.value ?? 'profit_desc';
+      if (mode === 'urgency_profit') mode = 'profit_desc';
       const hint = document.getElementById('sort-hint');
       if (hint) {
         hint.textContent =
-          mode === 'profit_desc' ? 'Razvrščeno po profitu (padajoče)' :
-          mode === 'profit_asc'  ? 'Razvrščeno po profitu (naraščajoče)' :
-          'Razvrščeno po nujnosti in profitu';
+          mode === 'profit_desc' ? 'Razvrščeno po profitu ↓' :
+          mode === 'profit_asc'  ? 'Razvrščeno po profitu ↑' :
+          'Razvrščeno po profitu';
       }
 
       const copy = emails.slice();
