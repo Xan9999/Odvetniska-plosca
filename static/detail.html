@@ -1012,6 +1012,42 @@
 
       const amlColor = { nizko:'#16a34a', srednje:'#d97706', visoko:'#dc2626' }[a.aml_tveganje] || '#333';
 
+      // Draft plain text
+      let draftText = record.draft || '';
+      const nl = teamIn.map(acr => allFieldAttys.find(a=>a.acronym===acr)?.name).filter(Boolean);
+      const names = nl.length <= 1 ? (nl[0]||'—') : nl.slice(0,-1).join(', ') + ' & ' + nl[nl.length-1];
+      draftText = draftText.replaceAll('{{PREDLAGANA_EKIPA}}', names).replace(/\bekipi v sestavi\b/g,'ekipi');
+      const vf = teamIn.length<=1?'ima':teamIn.length===2?'imata':'imajo';
+      draftText = draftText.replace(/\bki ima(?:ta|jo)?\b/g,`ki ${vf}`).replace('[Vaše ime]', LOGGED_IN.name);
+      const qs = record.analysis?.dodatna_vprasanja || [];
+      const qText = qs.filter((_,i)=>checkedQs.has(i)).map(q=>`• ${q}`).join('\n');
+      draftText = draftText.replaceAll('{{USMERJEVALNA_VPRASANJA}}', qText);
+      draftText = draftText.replaceAll('{{POTREBNA_DOKUMENTACIJA}}', amlChecklist.map(i=>`• ${i}`).join('\n'));
+      if (draftText.includes('{{QA_ODGOVORI}}')) {
+        const qaText = qaBlocks.map((qa,i)=>`${i+1}. ${qa.odgovor}`).join('\n');
+        draftText = draftText.replaceAll('{{QA_ODGOVORI}}', qaText);
+      }
+      draftText = draftText.replace(/\[REF:[^\]]+\]/g,'');
+
+      // Q&A blocks
+      const qaHtml = qaBlocks.length ? qaBlocks.map((qa,i) => `
+        <div style="margin-bottom:10pt">
+          <p class="meta">${i+1}. ${esc(qa.vprasanje)}</p>
+          <p>${esc(qa.odgovor)}</p>
+          ${(qa.sources||[]).length ? `<p class="meta">Viri: ${qa.sources.map(s=>esc(s.title)).join(', ')}</p>` : ''}
+        </div>`).join('') : '<p class="meta">Ni vprašanj.</p>';
+
+      // Conflict details
+      const conflictMatches = [...(cf.conflicts||[]),...(cf.risks||[])];
+      const conflictDetail = conflictMatches.length
+        ? conflictMatches.map(m=>`<p class="meta">• ${esc(m.entity)} → ${esc(m.matched_client)} (${m.score}%)</p>`).join('')
+        : '';
+
+      // TFL refs
+      const tflRefsHtml = (record.tfl_refs||[]).length
+        ? (record.tfl_refs).map(r=>`<p class="meta">• ${esc(r.title)}</p>`).join('')
+        : '<p class="meta">Ni relevantnih virov.</p>';
+
       document.getElementById('print-view').innerHTML = `
         <h1>Jadek &amp; Pensa — Analiza zadeve</h1>
         <p class="meta">Datum: ${date} &nbsp;|&nbsp; Odgovorni: ${LOGGED_IN.name}</p>
@@ -1020,23 +1056,36 @@
         <p><strong>${esc(s.name)}</strong> &lt;${esc(s.email)}&gt;<br>
         <span class="meta">Zadeva: ${esc(s.subject)}</span></p>
 
-        <h2>Originalni mail</h2>
-        <pre>${esc(record.body)}</pre>
+        <h2>Osnutek odgovora</h2>
+        <pre>${esc(draftText)}</pre>
 
         <h2>Analiza</h2>
         <p><strong>Pravno področje:</strong> ${esc(a.legal_field || '—')}</p>
         <p><strong>Povzetek:</strong> ${esc(a.povzetek || '—')}</p>
-        <p><strong>Zahtevnost:</strong> ${a.zahtevnost || '—'}/10</p>
+        <p><strong>Zahtevnost:</strong> ${a.zahtevnost || '—'}/10 &nbsp;|&nbsp; <span class="meta">${esc(a.zahtevnost_razlaga||'')}</span></p>
         <p><strong>Ocena zaslužka:</strong> ${(a.profit || 0).toLocaleString('sl-SI')} €</p>
-        <p><strong>Konflikt interesov:</strong> ${conflictHtml}</p>
-        <p><strong>AML / KYC tveganje:</strong> <span style="color:${amlColor}">${({nizko:'Nizko',srednje:'Srednje',visoko:'Visoko'})[a.aml_tveganje] || '—'}</span></p>
+
+        <h2>Konflikt interesov</h2>
+        <p>${conflictHtml}</p>${conflictDetail}
+
+        <h2>AML / KYC tveganje</h2>
+        <p><strong><span style="color:${amlColor}">${({nizko:'Nizko',srednje:'Srednje',visoko:'Visoko'})[a.aml_tveganje]||'—'}</span></strong></p>
         ${a.aml_razlaga ? `<p class="meta">${esc(a.aml_razlaga)}</p>` : ''}
 
         <h2>Ekipa</h2>
         <p>${esc(teamNames)}</p>
 
+        <h2>Odgovori na vprašanja stranke</h2>
+        ${qaHtml}
+
+        <h2>Relevantni pravni viri (Tax-Fin-Lex)</h2>
+        ${tflRefsHtml}
+
         <h2>Potrebna dokumentacija (ZPPDFT-2)</h2>
         ${checklistHtml}
+
+        <h2>Originalni mail</h2>
+        <pre>${esc(record.body)}</pre>
       `;
       window.print();
     }
