@@ -1063,6 +1063,14 @@ def update_status(email_id: str, status: str):
     raise HTTPException(status_code=404, detail="Email not found")
 
 
+@app.delete("/api/emails/{email_id}")
+def delete_email(email_id: str):
+    emails = get_emails()
+    emails = [e for e in emails if e.get("id") != email_id]
+    save_emails(emails)
+    return {"ok": True}
+
+
 @app.delete("/api/emails")
 def delete_all_emails():
     save_emails([])
