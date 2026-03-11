@@ -529,7 +529,7 @@
       // Proposed meeting date
       if (selectedDate) {
         const d = new Date(selectedDate + 'T12:00:00');
-        const dateFmt = d.toLocaleDateString('sl-SI', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+        const dateFmt = d.toLocaleDateString('sl-SI', {day:'numeric', month:'long', year:'numeric'});
         text = text.replaceAll('{{PREDLAGANI_TERMIN}}', dateFmt);
       } else {
         text = text.replaceAll('{{PREDLAGANI_TERMIN}}', '[datum videokonference]');
@@ -1086,7 +1086,7 @@
       text = text.replace('[Vaše ime]', LOGGED_IN.name);
       if (selectedDate) {
         const d = new Date(selectedDate + 'T12:00:00');
-        const dateFmt = d.toLocaleDateString('sl-SI', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+        const dateFmt = d.toLocaleDateString('sl-SI', {day:'numeric', month:'long', year:'numeric'});
         text = text.replace(/\{\{PREDLAGANI[_ ]TERMIN\}\}/gi, dateFmt);
       } else {
         text = text.replace(/\{\{PREDLAGANI[_ ]TERMIN\}\}/gi, '[datum videokonference]');
@@ -1144,7 +1144,7 @@
       text = text.replace(/\bki ima(?:ta|jo)?\b/g,`ki ${vf}`).replace('[Vaše ime]', LOGGED_IN.name);
       if (selectedDate) {
         const d = new Date(selectedDate + 'T12:00:00');
-        text = text.replace(/\{\{PREDLAGANI[_ ]TERMIN\}\}/gi, d.toLocaleDateString('sl-SI',{weekday:'long',day:'numeric',month:'long',year:'numeric'}));
+        text = text.replace(/\{\{PREDLAGANI[_ ]TERMIN\}\}/gi, d.toLocaleDateString('sl-SI',{day:'numeric',month:'long',year:'numeric'}));
       } else {
         text = text.replace(/\{\{PREDLAGANI[_ ]TERMIN\}\}/gi, '[datum videokonference]');
       }
@@ -1247,7 +1247,7 @@
       draftText = draftText.replaceAll('{{POTREBNA_DOKUMENTACIJA}}', amlChecklist.map(i=>`• ${i}`).join('\n'));
       if (selectedDate) {
         const d = new Date(selectedDate + 'T12:00:00');
-        const dateFmt = d.toLocaleDateString('sl-SI', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+        const dateFmt = d.toLocaleDateString('sl-SI', {day:'numeric', month:'long', year:'numeric'});
         draftText = draftText.replace(/\{\{PREDLAGANI[_ ]TERMIN\}\}/gi, dateFmt);
       } else {
         draftText = draftText.replace(/\{\{PREDLAGANI[_ ]TERMIN\}\}/gi, '[datum videokonference]');
@@ -1451,7 +1451,7 @@
     function selectDate(iso, rebuild = true) {
       selectedDate = iso;
       const d = new Date(iso + 'T12:00:00');
-      const label = d.toLocaleDateString('sl-SI', {weekday:'short', day:'numeric', month:'long'});
+      const label = d.toLocaleDateString('sl-SI', {day:'numeric', month:'long'});
       const labelEl = document.getElementById('cal-selected-label');
       labelEl.textContent = label;
       labelEl.classList.remove('hidden');
