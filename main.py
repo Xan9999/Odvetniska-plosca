@@ -2,7 +2,7 @@ import json
 import os
 import uuid
 import pathlib
-from datetime import datetime
+from datetime import datetime, date, timedelta
 
 import io
 
@@ -191,7 +191,12 @@ def llm_generate_draft(email_text: str, analysis: dict, selected_cases: list) ->
    Primer (sl): "Za obravnavo zadeve bomo potrebovali naslednjo dokumentacijo:\n{{POTREBNA_DOKUMENTACIJA}}"
    Primer (en): "To proceed with your matter, we will require the following documentation:\n{{POTREBNA_DOKUMENTACIJA}}"
 
-5. PODPIS: [Vaše ime]
+5. VIDEO KONFERENCA: V naslednje korake vključi predlog video konference z naslednjim placeholderjem:
+   {{PREDLAGANI_TERMIN}}
+   Primer (sl): "Predlagamo uvodni video posvet dne {{PREDLAGANI_TERMIN}}, na katerem bi podrobneje razpravljali o vaši zadevi."
+   Primer (en): "We propose an initial video conference on {{PREDLAGANI_TERMIN}} to discuss your matter in detail."
+
+6. PODPIS: [Vaše ime]
 
 ━━ NAVAJANJE PRIMEROV ━━
 Vstavi [REF:case_id] TAKOJ za poved ki citira izkušnje pisarne (pred presledkom, za morebitno piko).
@@ -329,6 +334,25 @@ def _tfl_fix_url(item: dict) -> dict:
     if entity_id and item_type in _TFL_URL_MAP:
         item["url"] = _TFL_URL_MAP[item_type].format(entity_id)
     return item
+
+
+def tfl_get_deadline_info(legal_field: str, summary: str) -> dict:
+    """Ask TFL for statutory deadlines relevant to this matter."""
+    if not TFL_API_KEY:
+        return {}
+    question = (
+        f"Za pravno zadevo s področja '{legal_field}': {summary}\n\n"
+        "Kateri zakoni določajo obvezne zakonske roke (v urah ali dneh)? "
+        "Navedi samo konkretne roke z zakonsko podlago (člen, zakon). "
+        "Odgovori v 3–5 stavkih brez emotikonov."
+    )
+    result = tfl_ask(question, max_tokens=350)
+    if not result["answer"]:
+        return {}
+    return {
+        "tfl_deadline_info": result["answer"],
+        "tfl_deadline_sources": result["sources"][:3],
+    }
 
 
 def tfl_search(query: str, types: list | None = None) -> list:
@@ -536,6 +560,13 @@ async def process_email(
     if TFL_API_KEY and analysis.get("povzetek"):
         tfl_refs = tfl_search(analysis["povzetek"], types=["act", "court"])
 
+    # Call 6 — TFL statutory deadline analysis
+    tfl_deadline = {}
+    if TFL_API_KEY and analysis.get("legal_field") and analysis.get("povzetek"):
+        tfl_deadline = tfl_get_deadline_info(
+            analysis["legal_field"], analysis["povzetek"]
+        )
+
     record = {
         "id": str(uuid.uuid4()),
         "created_at": datetime.now().isoformat(),
@@ -552,6 +583,7 @@ async def process_email(
         "citations": draft_result.get("citations", {}),
         "qa_blocks": tfl_qa,
         "tfl_refs": tfl_refs,
+        "tfl_deadline": tfl_deadline,
         "selected_cases": selected_cases,
         "status": "new",
     }
@@ -676,6 +708,22 @@ def tfl_doc(id: str, type: str = "legislation"):
             }
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e))
+
+
+@app.get("/api/calendar")
+def get_calendar():
+    """Return mock calendar availability for the next 90 days."""
+    cal_file = DB / "calendar.json"
+    if not cal_file.exists():
+        # Auto-generate if missing
+        import random as _r; _r.seed(42)
+        cal = {}
+        for i in range(90):
+            d = (date.today() + timedelta(days=i)).isoformat()
+            dow = date.fromisoformat(d).weekday()
+            cal[d] = 0 if dow >= 5 else _r.choices([0,1,2,3], weights=[5,20,40,35])[0]
+        cal_file.write_text(json.dumps(cal, indent=2), encoding="utf-8")
+    return json.loads(cal_file.read_text(encoding="utf-8"))
 
 
 class TflAskIn(BaseModel):
