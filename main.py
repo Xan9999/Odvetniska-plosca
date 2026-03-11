@@ -2,11 +2,14 @@ import json
 import os
 import uuid
 import pathlib
-from datetime import datetime
+from datetime import datetime, date, timedelta
 
+import io
+
+import pypdf
 import requests
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -188,7 +191,12 @@ def llm_generate_draft(email_text: str, analysis: dict, selected_cases: list) ->
    Primer (sl): "Za obravnavo zadeve bomo potrebovali naslednjo dokumentacijo:\n{{POTREBNA_DOKUMENTACIJA}}"
    Primer (en): "To proceed with your matter, we will require the following documentation:\n{{POTREBNA_DOKUMENTACIJA}}"
 
-5. PODPIS: [Vaše ime]
+5. VIDEO KONFERENCA: V naslednje korake vključi predlog video konference z naslednjim placeholderjem:
+   {{PREDLAGANI_TERMIN}}
+   Primer (sl): "Predlagamo uvodni video posvet dne {{PREDLAGANI_TERMIN}}, na katerem bi podrobneje razpravljali o vaši zadevi."
+   Primer (en): "We propose an initial video conference on {{PREDLAGANI_TERMIN}} to discuss your matter in detail."
+
+6. PODPIS: [Vaše ime]
 
 ━━ NAVAJANJE PRIMEROV ━━
 Vstavi [REF:case_id] TAKOJ za poved ki citira izkušnje pisarne (pred presledkom, za morebitno piko).
@@ -328,6 +336,25 @@ def _tfl_fix_url(item: dict) -> dict:
     return item
 
 
+def tfl_get_deadline_info(legal_field: str, summary: str) -> dict:
+    """Ask TFL for statutory deadlines relevant to this matter."""
+    if not TFL_API_KEY:
+        return {}
+    question = (
+        f"Za pravno zadevo s področja '{legal_field}': {summary}\n\n"
+        "Kateri zakoni določajo obvezne zakonske roke (v urah ali dneh)? "
+        "Navedi samo konkretne roke z zakonsko podlago (člen, zakon). "
+        "Odgovori v 3–5 stavkih brez emotikonov."
+    )
+    result = tfl_ask(question, max_tokens=350)
+    if not result["answer"]:
+        return {}
+    return {
+        "tfl_deadline_info": result["answer"],
+        "tfl_deadline_sources": result["sources"][:3],
+    }
+
+
 def tfl_search(query: str, types: list | None = None) -> list:
     """Semantic search over TFL legal database."""
     if not TFL_API_KEY:
@@ -347,6 +374,17 @@ def tfl_search(query: str, types: list | None = None) -> list:
         return [_tfl_fix_url(i) for i in items]
     except Exception:
         return []
+
+
+# ── Attachment extraction ─────────────────────────────────────────────────────
+
+def extract_pdf_text(data: bytes) -> str:
+    try:
+        reader = pypdf.PdfReader(io.BytesIO(data))
+        pages = [page.extract_text() or "" for page in reader.pages]
+        return "\n\n".join(p for p in pages if p.strip())
+    except Exception:
+        return ""
 
 
 # ── Conflict check ─────────────────────────────────────────────────────────────
@@ -434,6 +472,8 @@ class EmailIn(BaseModel):
     subject: str
     body: str
 
+MAX_ATTACHMENT_CHARS = 12_000  # ~3k tokens per attachment
+
 
 @app.get("/")
 def serve_index():
@@ -446,17 +486,45 @@ def serve_detail():
 
 
 @app.post("/api/emails")
-def process_email(submission: EmailIn):
+async def process_email(
+    sender_name:  str = Form(...),
+    sender_email: str = Form(...),
+    subject:      str = Form(...),
+    body:         str = Form(...),
+    attachments:  list[UploadFile] = File(default=[]),
+):
     attorneys = load_db("attorneys.json")
     legal_fields = load_db("legal_fields.json")
     cases = load_db("cases.json")
     clients = load_db("clients.json")
 
+    # Extract text from PDF attachments
+    attachment_texts = []
+    attachment_meta = []
+    for f in attachments:
+        if not f.filename:
+            continue
+        raw = await f.read()
+        fname = f.filename.lower()
+        if fname.endswith(".pdf"):
+            text = extract_pdf_text(raw)
+        else:
+            try:
+                text = raw.decode("utf-8", errors="replace")
+            except Exception:
+                text = ""
+        if text.strip():
+            text = text[:MAX_ATTACHMENT_CHARS]
+            attachment_texts.append(f"[PRILOGA: {f.filename}]\n{text}")
+            attachment_meta.append({"filename": f.filename, "chars": len(text)})
+
     full_email = (
-        f"Od: {submission.sender_name} <{submission.sender_email}>\n"
-        f"Zadeva: {submission.subject}\n\n"
-        f"{submission.body}"
+        f"Od: {sender_name} <{sender_email}>\n"
+        f"Zadeva: {subject}\n\n"
+        f"{body}"
     )
+    if attachment_texts:
+        full_email += "\n\n" + "\n\n".join(attachment_texts)
 
     # Call 1 — analyse
     analysis = llm_analyze(full_email)
@@ -492,21 +560,30 @@ def process_email(submission: EmailIn):
     if TFL_API_KEY and analysis.get("povzetek"):
         tfl_refs = tfl_search(analysis["povzetek"], types=["act", "court"])
 
+    # Call 6 — TFL statutory deadline analysis
+    tfl_deadline = {}
+    if TFL_API_KEY and analysis.get("legal_field") and analysis.get("povzetek"):
+        tfl_deadline = tfl_get_deadline_info(
+            analysis["legal_field"], analysis["povzetek"]
+        )
+
     record = {
         "id": str(uuid.uuid4()),
         "created_at": datetime.now().isoformat(),
         "sender": {
-            "name": submission.sender_name,
-            "email": submission.sender_email,
-            "subject": submission.subject,
+            "name": sender_name,
+            "email": sender_email,
+            "subject": subject,
         },
-        "body": submission.body,
+        "body": body,
+        "attachments": attachment_meta,
         "analysis": analysis,
         "conflict": conflict,
         "draft": draft_result.get("draft", ""),
         "citations": draft_result.get("citations", {}),
         "qa_blocks": tfl_qa,
         "tfl_refs": tfl_refs,
+        "tfl_deadline": tfl_deadline,
         "selected_cases": selected_cases,
         "status": "new",
     }
@@ -566,6 +643,36 @@ def delete_all_emails():
     return {"ok": True}
 
 
+@app.get("/api/tfl/external-url")
+def tfl_external_url(id: str, type: str = "legislation"):
+    """Resolve a TFL entity ID to its canonical external URL (PISRS or sodnapraksa.si)."""
+    if not TFL_API_KEY:
+        raise HTTPException(status_code=503, detail="TFL API key not configured")
+    try:
+        if type == "court":
+            resp = requests.get(f"{TFL_BASE}/court-decisions/{id}", headers=TFL_HEADERS, timeout=15)
+            data = resp.json().get("data", {})
+            ecli = data.get("ecli", "")
+            if ecli:
+                url = f"https://sodnapraksa.si/?q=ecliid:{ecli}"
+            else:
+                # Fallback: sodnapraksa search by document title
+                title = data.get("title", "")
+                url = f"https://sodnapraksa.si/?q={requests.utils.quote(title)}"
+        else:
+            resp = requests.get(f"{TFL_BASE}/legislation/{id}/metadata", headers=TFL_HEADERS, timeout=15)
+            data = resp.json().get("data", {})
+            sop = (data.get("sop") or "").strip()
+            if sop:
+                url = f"https://www.pisrs.si/Pis.web/pregledPredpisa?sop={sop}"
+            else:
+                abbr = (data.get("abbreviation") or "").strip()
+                url = f"https://www.pisrs.si/Pis.web/pregled?besedilo={requests.utils.quote(abbr)}"
+        return {"url": url}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
 @app.get("/api/tfl/doc")
 def tfl_doc(id: str, type: str = "legislation"):
     """Fetch a TFL document (legislation or court decision) via API and return content."""
@@ -595,12 +702,28 @@ def tfl_doc(id: str, type: str = "legislation"):
                 "abbreviation": data.get("abbreviation", ""),
                 "article_count": data.get("articleCount", 0),
                 "articles": [
-                    {"mark": a.get("mark", ""), "content": a.get("content", "")}
+                    {"mark": a.get("mark", ""), "content": a.get("html", a.get("content", ""))}
                     for a in articles[:15]
                 ],
             }
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e))
+
+
+@app.get("/api/calendar")
+def get_calendar():
+    """Return mock calendar availability for the next 90 days."""
+    cal_file = DB / "calendar.json"
+    if not cal_file.exists():
+        # Auto-generate if missing
+        import random as _r; _r.seed(42)
+        cal = {}
+        for i in range(90):
+            d = (date.today() + timedelta(days=i)).isoformat()
+            dow = date.fromisoformat(d).weekday()
+            cal[d] = 0 if dow >= 5 else _r.choices([0,1,2,3], weights=[5,20,40,35])[0]
+        cal_file.write_text(json.dumps(cal, indent=2), encoding="utf-8")
+    return json.loads(cal_file.read_text(encoding="utf-8"))
 
 
 class TflAskIn(BaseModel):

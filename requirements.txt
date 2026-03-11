@@ -4,3 +4,5 @@ openai>=1.57.0
 rapidfuzz==3.9.7
 python-dotenv==1.0.1
 requests>=2.32.0
+pypdf>=4.0.0
+python-multipart>=0.0.9
