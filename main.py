@@ -4,9 +4,12 @@ import uuid
 import pathlib
 from datetime import datetime
 
+import io
+
+import pypdf
 import requests
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -349,6 +352,17 @@ def tfl_search(query: str, types: list | None = None) -> list:
         return []
 
 
+# ── Attachment extraction ─────────────────────────────────────────────────────
+
+def extract_pdf_text(data: bytes) -> str:
+    try:
+        reader = pypdf.PdfReader(io.BytesIO(data))
+        pages = [page.extract_text() or "" for page in reader.pages]
+        return "\n\n".join(p for p in pages if p.strip())
+    except Exception:
+        return ""
+
+
 # ── Conflict check ─────────────────────────────────────────────────────────────
 
 CONFLICT_THRESHOLD = 80
@@ -434,6 +448,8 @@ class EmailIn(BaseModel):
     subject: str
     body: str
 
+MAX_ATTACHMENT_CHARS = 12_000  # ~3k tokens per attachment
+
 
 @app.get("/")
 def serve_index():
@@ -446,17 +462,45 @@ def serve_detail():
 
 
 @app.post("/api/emails")
-def process_email(submission: EmailIn):
+async def process_email(
+    sender_name:  str = Form(...),
+    sender_email: str = Form(...),
+    subject:      str = Form(...),
+    body:         str = Form(...),
+    attachments:  list[UploadFile] = File(default=[]),
+):
     attorneys = load_db("attorneys.json")
     legal_fields = load_db("legal_fields.json")
     cases = load_db("cases.json")
     clients = load_db("clients.json")
 
+    # Extract text from PDF attachments
+    attachment_texts = []
+    attachment_meta = []
+    for f in attachments:
+        if not f.filename:
+            continue
+        raw = await f.read()
+        fname = f.filename.lower()
+        if fname.endswith(".pdf"):
+            text = extract_pdf_text(raw)
+        else:
+            try:
+                text = raw.decode("utf-8", errors="replace")
+            except Exception:
+                text = ""
+        if text.strip():
+            text = text[:MAX_ATTACHMENT_CHARS]
+            attachment_texts.append(f"[PRILOGA: {f.filename}]\n{text}")
+            attachment_meta.append({"filename": f.filename, "chars": len(text)})
+
     full_email = (
-        f"Od: {submission.sender_name} <{submission.sender_email}>\n"
-        f"Zadeva: {submission.subject}\n\n"
-        f"{submission.body}"
+        f"Od: {sender_name} <{sender_email}>\n"
+        f"Zadeva: {subject}\n\n"
+        f"{body}"
     )
+    if attachment_texts:
+        full_email += "\n\n" + "\n\n".join(attachment_texts)
 
     # Call 1 — analyse
     analysis = llm_analyze(full_email)
@@ -496,11 +540,12 @@ def process_email(submission: EmailIn):
         "id": str(uuid.uuid4()),
         "created_at": datetime.now().isoformat(),
         "sender": {
-            "name": submission.sender_name,
-            "email": submission.sender_email,
-            "subject": submission.subject,
+            "name": sender_name,
+            "email": sender_email,
+            "subject": subject,
         },
-        "body": submission.body,
+        "body": body,
+        "attachments": attachment_meta,
         "analysis": analysis,
         "conflict": conflict,
         "draft": draft_result.get("draft", ""),
