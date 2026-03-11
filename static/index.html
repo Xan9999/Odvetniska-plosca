@@ -54,11 +54,6 @@
     </div>
 
     <div class="flex gap-2 flex-wrap items-center">
-      <select id="filter-urgency" class="bg-white text-sm px-2.5 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-500">
-        <option value="all">Vsa nujnost</option>
-        <option value="deadline">Rok (nujno)</option>
-        <option value="urgent">Nujno</option>
-      </select>
       <select id="filter-conflict" class="bg-white text-sm px-2.5 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-500">
         <option value="all">Konflikt (vsi)</option>
         <option value="ok">Ni konflikta</option>
@@ -115,10 +110,8 @@
             <th>Zadeva</th>
             <th>Področje</th>
             <th>Vrednost</th>
-            <th>AML</th>
             <th>Konflikt</th>
-            <th>Nujnost</th>
-            <th class="pr-6 text-right">Prejeto</th>
+            <th>Rok</th>
           </tr>
         </thead>
         <tbody id="cards-grid"></tbody>
@@ -197,7 +190,6 @@
       konflikt: 'bg-red-50    text-red-700    border-red-200',
     };
     const CONFLICT_DOT = { ok: 'bg-green-500', tveganje: 'bg-amber-500', konflikt: 'bg-red-500' };
-    const AML_COLOR = { nizko: 'text-green-600', srednje: 'text-amber-600', visoko: 'text-red-600' };
 
     let ALL_EMAILS = [];
     let _filterTimer = null;
@@ -245,7 +237,6 @@
 
     function rowMatchesFilters(e) {
       const q = (document.getElementById('filter-search')?.value ?? '').trim().toLowerCase();
-      const fUrg = document.getElementById('filter-urgency')?.value ?? 'all';
       const fCon = document.getElementById('filter-conflict')?.value ?? 'all';
       const fPro = document.getElementById('filter-profit')?.value ?? 'all';
 
@@ -263,13 +254,6 @@
       if (fPro === 'gt10000' && !(p > 10000)) return false;
       if (fPro === '1k-10k' && !(p >= 1000 && p <= 10000)) return false;
       if (fPro === 'lt1000' && !(p < 1000)) return false;
-
-      if (fUrg === 'deadline' && !e?.rok?.nujno) return false;
-      if (fUrg === 'urgent') {
-        const isDeadlineSoon = e?.rok?.nujno && e?.rok?.cas_dni != null && Number(e.rok.cas_dni) <= 3;
-        const isHigh = (Number(e?.nujnost ?? 0) || 0) >= 0.8;
-        if (!isDeadlineSoon && !isHigh) return false;
-      }
 
       return true;
     }
@@ -308,8 +292,6 @@
     function renderRow(e) {
       const cConf = CONFLICT_COLORS[e.conflict_status] || CONFLICT_COLORS.ok;
       const cDot  = CONFLICT_DOT[e.conflict_status]   || CONFLICT_DOT.ok;
-      const cAml  = AML_COLOR[e.aml_tveganje]         || 'text-slate-500';
-      const date  = new Date(e.created_at).toLocaleDateString('sl-SI', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
 
       return `
         <tr class="cursor-pointer" onclick="window.location.href='/detail?id=${encodeURIComponent(e.id)}'">
@@ -323,14 +305,12 @@
           </td>
           <td><span class="text-indigo-700 font-mono text-sm">${esc(e.legal_field || '')}</span></td>
           <td><span class="text-slate-900 font-mono font-bold text-sm">${profitNum(e).toLocaleString('sl-SI')} €</span></td>
-          <td><span class="text-xs font-semibold ${cAml}">${esc(e.aml_tveganje || '')}</span></td>
           <td>
             <span class="text-xs border px-2 py-0.5 rounded-md ${cConf}">
               <span class="status-dot ${cDot} mr-1"></span>${esc(CONFLICT_LABELS[e.conflict_status] || CONFLICT_LABELS.ok)}
             </span>
           </td>
           <td>${urgencyCell(e)}</td>
-          <td class="pr-6 text-right text-slate-500">${esc(date)}</td>
         </tr>`;
     }
 
@@ -354,7 +334,7 @@
     }
 
     function setupControls() {
-      const ids = ['filter-search', 'filter-urgency', 'filter-conflict', 'filter-profit', 'sort-by'];
+      const ids = ['filter-search', 'filter-conflict', 'filter-profit', 'sort-by'];
       for (const id of ids) {
         const el = document.getElementById(id);
         if (!el) continue;
