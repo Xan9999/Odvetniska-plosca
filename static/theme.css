@@ -1,0 +1,279 @@
+:root {
+  /* Palette + typography inspired by https://www.jadek-pensa.si/en/ */
+  --vs-bg: #f3f4f5;
+  --vs-panel: #ffffff;
+  --vs-header: #ffffff;
+  --vs-row-hover: #f0f4f7;
+  --vs-border: #d4d5e0;
+  --vs-accent: #181978; /* J&P "blue" */
+  --vs-text: #1a1a1a;
+  --vs-muted: #757575;
+  --vs-danger: #d32422;
+  --vs-warn: #7f87ca; /* J&P "blue-light" */
+  --vs-good: #181978;
+}
+
+/* Jadek & Pensa typeface: F37 Drago (served from their site). */
+@font-face {
+  font-family: "F37Drago-Light";
+  src: url("https://www.jadek-pensa.si/wp-content/themes/humanfrog/fonts/F37Drago-Light.woff2") format("woff2");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "F37Drago-Regular";
+  src: url("https://www.jadek-pensa.si/wp-content/themes/humanfrog/fonts/F37Drago-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Scope everything to a single class so the theme only applies where enabled. */
+.jp-theme body {
+  background: var(--vs-bg);
+  color: var(--vs-text);
+  font-family: "F37Drago-Regular", Arial, system-ui, -apple-system, sans-serif;
+  letter-spacing: 0.1px;
+}
+
+.jp-theme .vs-btn {
+  background-color: var(--vs-accent);
+  color: #ffffff;
+  padding: 6px 14px;
+  font-size: 12px;
+  border-radius: 2px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  transition: filter 0.18s;
+}
+.jp-theme .vs-btn:hover { filter: brightness(1.12); }
+
+.jp-theme .vs-btn-outline {
+  border: 1px solid var(--vs-border);
+  color: var(--vs-text);
+  padding: 6px 14px;
+  font-size: 12px;
+  border-radius: 2px;
+  background: transparent;
+  transition: background 0.18s, border-color 0.18s;
+}
+.jp-theme .vs-btn-outline:hover {
+  background: rgba(24, 25, 120, 0.05);
+  border-color: rgba(24, 25, 120, 0.22);
+}
+
+.jp-theme .badge {
+  padding: 2px 6px;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.jp-theme .urgency-high { color: var(--vs-danger); }
+.jp-theme .urgency-medium { color: var(--vs-warn); }
+.jp-theme .urgency-low { color: var(--vs-accent); }
+
+/* Table in a "tooling" style (homepage mock). */
+.jp-theme .data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.jp-theme .data-table thead th {
+  background-color: var(--vs-panel);
+  color: rgba(117, 117, 117, 0.95);
+  font-weight: 700;
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--vs-border);
+  text-transform: uppercase;
+  font-size: 11.5px;
+  letter-spacing: 0.7px;
+  white-space: nowrap;
+}
+.jp-theme .data-table tbody td {
+  padding: 12px;
+  border-bottom: 1px solid var(--vs-border);
+  vertical-align: middle;
+}
+.jp-theme .data-table tbody tr:hover {
+  background-color: var(--vs-row-hover);
+}
+
+.jp-theme a {
+  color: inherit;
+}
+
+.jp-theme ::selection {
+  background: rgba(24, 25, 120, 0.16);
+}
+
+/* Tailwind utility overrides (kept small and targeted). */
+.jp-theme .bg-slate-50 {
+  background-color: var(--vs-bg) !important;
+}
+.jp-theme .bg-white {
+  background-color: var(--vs-panel) !important;
+}
+.jp-theme .bg-slate-100 {
+  background-color: #f2f2f2 !important;
+}
+.jp-theme .bg-slate-200 {
+  background-color: #e9eaef !important;
+}
+
+.jp-theme .border-slate-200,
+.jp-theme .border-slate-100,
+.jp-theme .border-slate-300,
+.jp-theme .border-indigo-200,
+.jp-theme .border-indigo-100 {
+  border-color: var(--vs-border) !important;
+}
+
+.jp-theme .border-red-100,
+.jp-theme .border-red-200,
+.jp-theme .border-red-300 {
+  border-color: rgba(211, 36, 34, 0.35) !important;
+}
+.jp-theme .border-green-200,
+.jp-theme .border-green-300 {
+  border-color: rgba(24, 25, 120, 0.22) !important;
+}
+.jp-theme .border-blue-200,
+.jp-theme .border-blue-300 {
+  border-color: rgba(24, 25, 120, 0.22) !important;
+}
+.jp-theme .border-amber-200,
+.jp-theme .border-amber-300 {
+  border-color: rgba(127, 135, 202, 0.45) !important;
+}
+
+.jp-theme .text-slate-900,
+.jp-theme .text-slate-800 {
+  color: var(--vs-text) !important;
+}
+.jp-theme .text-slate-700,
+.jp-theme .text-slate-600 {
+  color: #333333 !important;
+}
+.jp-theme .text-slate-500,
+.jp-theme .text-slate-400 {
+  color: var(--vs-muted) !important;
+}
+.jp-theme .text-red-400,
+.jp-theme .text-red-600,
+.jp-theme .text-red-700,
+.jp-theme .text-red-900 {
+  color: var(--vs-danger) !important;
+}
+.jp-theme .text-green-600,
+.jp-theme .text-green-700,
+.jp-theme .text-green-900 {
+  color: var(--vs-good) !important;
+}
+.jp-theme .text-blue-700,
+.jp-theme .text-blue-900 {
+  color: var(--vs-accent) !important;
+}
+.jp-theme .text-amber-600,
+.jp-theme .text-amber-700,
+.jp-theme .text-amber-800 {
+  color: var(--vs-warn) !important;
+}
+
+/* Accent remap: indigo -> VS blue (used by existing buttons/badges). */
+.jp-theme .bg-indigo-600 {
+  background-color: var(--vs-accent) !important;
+}
+.jp-theme .hover\\:bg-indigo-700:hover {
+  background-color: #11125f !important;
+}
+.jp-theme .text-indigo-700,
+.jp-theme .text-indigo-400 {
+  color: var(--vs-accent) !important;
+}
+.jp-theme .bg-indigo-50 {
+  background-color: rgba(24, 25, 120, 0.06) !important;
+}
+.jp-theme .border-indigo-100,
+.jp-theme .border-indigo-200 {
+  border-color: rgba(24, 25, 120, 0.28) !important;
+}
+
+/* Header polish */
+.jp-theme header {
+  background-color: var(--vs-header) !important;
+  border-bottom-color: var(--vs-border) !important;
+}
+
+/* Status panel backgrounds */
+.jp-theme .bg-red-50 {
+  background-color: rgba(211, 36, 34, 0.06) !important;
+}
+.jp-theme .bg-green-50 {
+  background-color: rgba(24, 25, 120, 0.05) !important;
+}
+.jp-theme .bg-blue-50 {
+  background-color: rgba(24, 25, 120, 0.05) !important;
+}
+.jp-theme .bg-amber-50 {
+  background-color: rgba(127, 135, 202, 0.12) !important;
+}
+
+/* Inputs */
+.jp-theme input,
+.jp-theme textarea,
+.jp-theme select {
+  background-color: #ffffff !important;
+  border-color: var(--vs-border) !important;
+  color: var(--vs-text) !important;
+}
+.jp-theme input::placeholder,
+.jp-theme textarea::placeholder {
+  color: rgba(117, 117, 117, 0.65) !important;
+}
+
+/* Cards and hover affordances */
+.jp-theme .card-hover:hover {
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12) !important;
+  transform: translateY(-1px);
+}
+
+/* Detail page interaction highlights (override the existing light palette). */
+.jp-theme .cited-sentence:hover,
+.jp-theme .cited-sentence.active {
+  background: rgba(127, 135, 202, 0.12) !important;
+  border-bottom-color: var(--vs-warn) !important;
+}
+.jp-theme .cite-sup {
+  color: var(--vs-accent) !important;
+}
+
+.jp-theme .qa-item:hover,
+.jp-theme .qa-item.active {
+  background: rgba(24, 25, 120, 0.05) !important;
+  border-left-color: var(--vs-accent) !important;
+}
+
+.jp-theme .inline-tip {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: var(--vs-border) !important;
+  color: var(--vs-text) !important;
+}
+
+/* Scrollbars (Chrome/Edge) */
+.jp-theme .custom-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.jp-theme .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+.jp-theme .custom-scroll::-webkit-scrollbar-thumb { background: #c8cbd8; border-radius: 4px; }
+.jp-theme .custom-scroll::-webkit-scrollbar-thumb:hover { background: #b7bac8; }
+
+@media print {
+  .jp-theme body {
+    background: #ffffff !important;
+    color: #111111 !important;
+    color-scheme: light;
+  }
+}
