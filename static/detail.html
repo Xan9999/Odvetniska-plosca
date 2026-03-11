@@ -284,11 +284,29 @@
                   <span id="complexity-num" class="text-xs font-bold text-slate-700 w-8 text-right"></span>
                 </div>
               </div>
-              <div class="bg-slate-50 rounded-lg px-3 py-2 cursor-help" data-tooltip-key="aml_razlaga">
-                <p class="text-xs text-slate-400 mb-0.5">AML / KYC tveganje</p>
+              <div class="bg-slate-50 rounded-lg px-3 py-2 cursor-pointer hover:bg-slate-100 transition-colors select-none" onclick="toggleKycAml()">
+                <div class="flex items-center justify-between">
+                  <p class="text-xs text-slate-400 mb-0.5">Tveganje</p>
+                  <svg id="kyc-aml-chevron" class="w-3.5 h-3.5 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </div>
                 <p id="aml-label" class="text-sm font-semibold"></p>
               </div>
             </div>
+          </div>
+
+          <!-- KYC / AML detail (expandable) -->
+          <div id="kyc-aml-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-4">
+            <div>
+              <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">KYC — stranke</h3>
+              <div id="kyc-entities" class="space-y-2"></div>
+            </div>
+            <div>
+              <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">AML indikatorji</h3>
+              <div id="aml-indicators" class="space-y-1"></div>
+            </div>
+            <p id="kyc-aml-razlaga" class="text-xs text-slate-500 leading-relaxed border-t border-slate-100 pt-3 hidden"></p>
           </div>
 
           <!-- AML checklist (dokumentacija) -->
@@ -492,6 +510,7 @@
       renderConflict(r.conflict || {});
       renderDeadline(r.analysis?.rok || {}, r.analysis?.nujnost ?? 0);
       renderMetrics(r.analysis || {});
+      renderKycAml(r.analysis || {});
       renderAmlChecklist(r.analysis || {});
       renderTeamPanels();
       renderQuestionsPanel();
@@ -818,6 +837,94 @@
     }
 
     // ── Metrics ───────────────────────────────────────────────────────────────
+    // ── KYC / AML detail card ─────────────────────────────────────────────────
+    function toggleKycAml() {
+      const card = document.getElementById('kyc-aml-card');
+      const chevron = document.getElementById('kyc-aml-chevron');
+      const hidden = card.classList.toggle('hidden');
+      chevron.style.transform = hidden ? '' : 'rotate(180deg)';
+    }
+
+    function renderKycAml(a) {
+      const kyc = a.kyc_aml;
+      if (!kyc) return;
+
+      const borderCls = { nizko:'border-slate-200', srednje:'border-amber-300', visoko:'border-red-300' }[kyc.skupno_tveganje] || 'border-slate-200';
+      const card = document.getElementById('kyc-aml-card');
+      card.className = `hidden bg-white border ${borderCls} rounded-xl p-4 shadow-sm space-y-4`;
+
+      // KYC entities
+      const riskDot = { nizko:'bg-green-400', srednje:'bg-amber-400', visoko:'bg-red-500' };
+      const entitiesEl = document.getElementById('kyc-entities');
+      if (kyc.kyc_entitete && kyc.kyc_entitete.length) {
+        entitiesEl.innerHTML = kyc.kyc_entitete.map(e => {
+          const dot = riskDot[e.tveganje] || 'bg-slate-300';
+          const tipBadge = e.tip === 'fizična'
+            ? '<span class="text-xs bg-blue-50 text-blue-600 border border-blue-200 rounded px-1.5 py-0.5 mr-1">fizična</span>'
+            : '<span class="text-xs bg-purple-50 text-purple-600 border border-purple-200 rounded px-1.5 py-0.5 mr-1">pravna</span>';
+          const pepBadge = e.pep
+            ? '<span class="text-xs bg-red-50 text-red-600 border border-red-200 rounded px-1.5 py-0.5 mr-1 font-semibold">PEP</span>'
+            : '';
+          const ajpesBadge = e.lastniška_struktura && e.lastniška_struktura !== 'ni podatkov'
+            ? `<span class="text-xs bg-slate-50 text-slate-500 border border-slate-200 rounded px-1.5 py-0.5">AJPES: ${esc(e.lastniška_struktura)}</span>`
+            : '';
+          return `<div class="flex items-start gap-2 py-1.5 border-b border-slate-50 last:border-0">
+            <span class="w-2 h-2 rounded-full mt-1.5 shrink-0 ${dot}"></span>
+            <div class="flex-1 min-w-0">
+              <div class="flex flex-wrap items-center gap-1 mb-0.5">
+                ${tipBadge}${pepBadge}
+                <span class="text-xs font-medium text-slate-700">${esc(e.ime)}</span>
+              </div>
+              ${ajpesBadge ? `<div class="mb-0.5">${ajpesBadge}</div>` : ''}
+              ${e.pep_razlaga ? `<p class="text-xs text-slate-500 leading-relaxed">${esc(e.pep_razlaga)}</p>` : ''}
+              ${e.opombe ? `<p class="text-xs text-slate-400 leading-relaxed">${esc(e.opombe)}</p>` : ''}
+            </div>
+          </div>`;
+        }).join('');
+      } else {
+        entitiesEl.innerHTML = '<p class="text-xs text-slate-400">Ni entitet za preverjanje.</p>';
+      }
+
+      // AML indicators
+      const AML_TIP_LABEL = {
+        proof_of_funds:          'Izvor sredstev',
+        'lastniška_struktura':   'Lastniška struktura',
+        jurisdikcija:            'Jurisdikcija',
+        gotovinska_intenzivnost: 'Gotovinska intenzivnost',
+        anonimnost:              'Zahteva po anonimnosti',
+        nujnost:                 'Neutemeljena nujnost',
+        corporate_structure:     'Sumljiva korp. struktura',
+      };
+      const indEl = document.getElementById('aml-indicators');
+      if (kyc.aml_indikatorji && kyc.aml_indikatorji.length) {
+        indEl.innerHTML = kyc.aml_indikatorji.map(ind => {
+          const risk = ind.tveganje || 'nizko';
+          const rowCls = ind.prisoten
+            ? { nizko:'bg-slate-50', srednje:'bg-amber-50', visoko:'bg-red-50' }[risk] || 'bg-slate-50'
+            : 'bg-white';
+          const iconCls = ind.prisoten
+            ? { nizko:'text-slate-400', srednje:'text-amber-500', visoko:'text-red-500' }[risk]
+            : 'text-green-400';
+          const icon = ind.prisoten ? { nizko:'●', srednje:'▲', visoko:'⚠' }[risk] : '✓';
+          return `<div class="flex items-start gap-2 rounded px-2 py-1.5 ${rowCls}">
+            <span class="text-xs font-bold ${iconCls} shrink-0 w-4 text-center mt-0.5">${icon}</span>
+            <div class="flex-1 min-w-0">
+              <span class="text-xs font-medium text-slate-700">${esc(AML_TIP_LABEL[ind.tip] || ind.tip)}</span>
+              ${ind.opis ? `<p class="text-xs text-slate-500 leading-relaxed">${esc(ind.opis)}</p>` : ''}
+            </div>
+          </div>`;
+        }).join('');
+      } else {
+        indEl.innerHTML = '<p class="text-xs text-slate-400">Ni indikatorjev.</p>';
+      }
+
+      if (kyc.skupna_razlaga) {
+        const raz = document.getElementById('kyc-aml-razlaga');
+        raz.textContent = kyc.skupna_razlaga;
+        raz.classList.remove('hidden');
+      }
+    }
+
     function renderMetrics(a) {
       document.getElementById('legal-field-badge').textContent = a.legal_field || '';
       document.getElementById('summary-text').textContent = a.povzetek || '';
