@@ -1,0 +1,92 @@
+[
+  {
+    "id": "ip-2023-01",
+    "title": "AlgoCorp d.o.o. proti ByteWave Solutions",
+    "year": 2023,
+    "fields": ["INTELEKTUALNA LASTNINA"],
+    "short_description": "Zaščita algoritma za strojno učenje pred nepooblaščeno uporabo konkurenta.",
+    "description": "Zastopali smo slovensko tehnološko podjetje v sporu glede lastniških algoritmov za strojno učenje. Nasprotna stran je brez dovoljenja implementirala patentirano metodologijo v lastni produkt in jo začela tržiti.",
+    "outcome": "Sodišče je potrdilo veljavnost patenta, dosodilo odškodnino 280.000 EUR in izreklo prepoved nadaljnje uporabe. Primer zaključen v 11 mesecih."
+  },
+  {
+    "id": "ip-2022-01",
+    "title": "TradeMark spor: Vivos d.o.o. proti Nordic Retail Group",
+    "year": 2022,
+    "fields": ["INTELEKTUALNA LASTNINA", "KOMERCIALNE POGODBE"],
+    "short_description": "Spor glede registrirane znamke in pogodbenega prenosa IP pravic ob izstopu soustanovitelja.",
+    "description": "Zastopali smo slovensko podjetje v mednarodnem sporu glede neupravičene registracije znamke s strani tujega partnerja ter hkrati uredili pogodbo o prenosu IP pravic ob izstopu enega od soustanoviteljev.",
+    "outcome": "Znamka razveljavljena pri EUIPO. Soustanovitelja sta podpisala ureditev prenosa IP. Stranki prihranek ocene 420.000 EUR v izognjenih licenčnih stroških."
+  },
+  {
+    "id": "ip-2021-01",
+    "title": "Licenčni sporazum: SoftBridge d.o.o. in nemška korporacija",
+    "year": 2021,
+    "fields": ["INTELEKTUALNA LASTNINA", "KOMERCIALNE POGODBE"],
+    "short_description": "Strukturiranje pogodbe o licenciranju B2B SaaS platforme za vstop na nemško tržišče.",
+    "description": "Svetovali smo pri oblikovanju licenčnega sporazuma za slovensko SaaS podjetje, ki je vstopalo na nemški trg prek distributerja. Posebej smo obravnavali klavzule o lastništvu IP, pravicah ob prekinitvi ter varstvu podatkov po GDPR.",
+    "outcome": "Pogodba uspešno podpisana. Stranka pridobila 3-letni ekskluzivni licenčni sporazum z zaščitenimi klavzulami o povrnitvi pravic."
+  },
+  {
+    "id": "gdpr-2023-01",
+    "title": "Kršitev GDPR: ModeShop d.o.o. — obvestilo nadzorniku",
+    "year": 2023,
+    "fields": ["VARSTVO OSEBNIH PODATKOV"],
+    "short_description": "Vodenje postopka priglasitve kršitve osebnih podatkov Informacijskemu pooblaščencu v 72-urnem roku.",
+    "description": "Podjetje je zaznalo vdor prek tretje strani, ki je izpostavil podatke 6.200 strank. Izvedli smo takojšnjo pravno oceno obsega kršitve, pripravili obvestilo Informacijskemu pooblaščencu v predpisanem roku ter koordinirali komunikacijo s prizadetimi posamezniki.",
+    "outcome": "Priglasitev pravočasno oddana. Inšpekcija zaključena brez globe; priporočena okrepitev varnostnih ukrepov. Stranka se izognila potencialni glob do 4 % letnega prometa."
+  },
+  {
+    "id": "gdpr-2022-01",
+    "title": "GDPR revizija: Fintech startup pred investicijsko rundo",
+    "year": 2022,
+    "fields": ["VARSTVO OSEBNIH PODATKOV", "KORPORACIJSKO PRAVO"],
+    "short_description": "Celovita GDPR skladnostna revizija pred vstopom tveganega kapitala.",
+    "description": "Pred Series A investicijsko rundo smo izvedli celotno GDPR revizijo za fintech startup: pregled politik zasebnosti, pogodb z obdelovalci, internih postopkov in evidenc dejavnosti obdelave.",
+    "outcome": "Revizija zaključena v 3 tednih. Identificiranih in odpravljenih 12 tveganih točk. Investitorji potrdili skladnost kot del due diligence."
+  },
+  {
+    "id": "del-2022-01",
+    "title": "Delovno pravo: Odpoved pogodbe o zaposlitvi — povračilni ukrep",
+    "year": 2022,
+    "fields": ["DELOVNO PRAVO", "PREPREČEVANJE IN REŠEVANJE SPOROV"],
+    "short_description": "Zastopanje delavca pri tožbi zoper neupravičeno odpoved po prijavi nepravilnosti.",
+    "description": "Zastopali smo nekdanjega finančnega direktorja, kateremu je bila odpovedana pogodba po tem, ko je interno prijavil računovodske nepravilnosti. Dokazali smo vzročno zvezo med prijavo in odpovedjo.",
+    "outcome": "Delovno sodišče je ugotovilo nezakonitost odpovedi. Stranka je prejela odškodnino in reintegracijo. Precedenčna odločitev glede zaščite prijaviteljev."
+  },
+  {
+    "id": "ma-2023-01",
+    "title": "M&A: Prevzem slovenskega SaaS podjetja s strani avstrijskega strateškega kupca",
+    "year": 2023,
+    "fields": ["PREVZEMI IN ZDRUŽITVE", "VARSTVO OSEBNIH PODATKOV", "INTELEKTUALNA LASTNINA"],
+    "short_description": "Vodenje celotnega procesa skrbnega pregleda in strukturiranja transakcije pri prevzemu tech podjetja.",
+    "description": "Zastopali smo prodajalce pri prodaji slovenskega podjetja za razvoj poslovne programske opreme. Izvedli smo pravni skrbni pregled IP portfelja, pogodb z zaposlenimi, GDPR skladnosti in licenčnih razmerij.",
+    "outcome": "Transakcija zaključena pri vrednosti 4,2 M EUR. Pogajanja z kupcem so bila uspešno zaključena v 4 mesecih, brez naknadnih garancijskih zahtevkov."
+  },
+  {
+    "id": "korp-2021-01",
+    "title": "Korporacijski spor: Izključitev manjšinskega delničarja",
+    "year": 2021,
+    "fields": ["KORPORACIJSKO PRAVO", "PREPREČEVANJE IN REŠEVANJE SPOROV"],
+    "short_description": "Zastopanje večinskega delničarja v postopku izključitve ter ureditev odkupa deleža.",
+    "description": "Zastopali smo večinskega delničarja v sporu z manjšinskim, ki je sistematično blokiral poslovne odločitve. Koordinirali smo postopek izključitve, sodno oceno vrednosti deleža in odkupno pogodbo.",
+    "outcome": "Sodna ocena vrednosti deleža zaključena. Odkupna pogodba podpisana. Podjetje nadaljevalo s strateško reorganizacijo brez ovir."
+  },
+  {
+    "id": "bank-2023-01",
+    "title": "Bančno pravo: Restrukturiranje posojila za hospitality skupino",
+    "year": 2023,
+    "fields": ["BANČNIŠTVO IN FINANCE", "INSOLVENČNO PRAVO IN PRESTRUKTURIRANJA"],
+    "short_description": "Pogajanja z banko za restrukturiranje dolga 3,8 M EUR in preprečitev insolventnosti.",
+    "description": "Svetovali smo skupini hotelov pri pogajanjih z upniško banko za restrukturiranje posojilnih pogodb po COVID krizi. Vključevalo je odlog plačil, znižanje obresti in delno konverzijo dolga.",
+    "outcome": "Sporazum o restrukturiranju dosežen izven sodišča. Stranka se je izognila insolvenčnemu postopku in nadaljevala poslovanje."
+  },
+  {
+    "id": "komp-2022-01",
+    "title": "Konkurenčno pravo: Kartelni sporazum v distribuciji",
+    "year": 2022,
+    "fields": ["KONKURENČNO PRAVO", "KOMERCIALNE POGODBE"],
+    "short_description": "Obramba podjetja v postopku pred Agencijo za varstvo konkurence glede domnevnega usklajevanja cen.",
+    "description": "Zastopali smo distribucijsko podjetje v postopku AVK glede domnevnega usklajevanja cen med konkurenti. Izpodbijali smo dokazno gradivo in dokazali odsotnost namerne koordinacije.",
+    "outcome": "Postopek ustavljen. Podjetje oproščeno. Vzpostavljene interne compliance smernice za preprečitev prihodnjih tveganj."
+  }
+]

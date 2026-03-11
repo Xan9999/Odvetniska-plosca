@@ -1,0 +1,20 @@
+{
+  "DELOVNO PRAVO":                                        ["IRPE", "NIBA", "ANOŠ", "TIHO", "LUZE"],
+  "BANČNIŠTVO IN FINANCE":                               ["ANJA", "NAME", "OŽME", "BORO", "KAVE"],
+  "DAVČNO PRAVO":                                        ["DORO", "VEKN", "MIPO", "LUZE"],
+  "ENERGETIKA":                                          ["ANJA", "JULE", "BORO"],
+  "TEHNOLOGIJA, MEDIJI IN ELEKTRONSKE KOMUNIKACIJE":     ["MIPO", "JULE", "LUZE", "TIHO"],
+  "INSOLVENČNO PRAVO IN PRESTRUKTURIRANJA":              ["OŽME", "ANJA", "NAME", "BORO"],
+  "INTELEKTUALNA LASTNINA":                              ["SAJE", "NESE", "EVGO", "PAPE", "KAVE", "LUZE"],
+  "JAVNO NAROČANJE":                                     ["GRKO", "BOLE", "PAPE", "BORO"],
+  "KOMERCIALNE POGODBE":                                 ["SAJE", "JAZA", "EVGO", "TIHO", "KAVE"],
+  "KONKURENČNO PRAVO":                                   ["PAPE", "JAZA", "BORO", "LUZE"],
+  "KORPORACIJSKO PRAVO":                                 ["ANJA", "SAJE", "NAME", "KAVE", "BORO"],
+  "MIGRACIJSKO PRAVO":                                   ["ANOŠ", "NIBA", "IRPE", "TIHO"],
+  "NALOŽBENI SKLADI":                                    ["ANJA", "KAVE", "BORO"],
+  "NEPREMIČNINE, GRADBENIŠTVO IN INFRASTRUKTURA":        ["GRKO", "PAPE", "BOLE", "EVGO", "BORO"],
+  "PREPREČEVANJE IN REŠEVANJE SPOROV":                   ["MIPO", "JULE", "BOLE", "IRPE", "LUZE"],
+  "PREVZEMI IN ZDRUŽITVE":                               ["OŽME", "ANJA", "NAME", "PAPE", "BORO"],
+  "REGULACIJA S PODROČJA ZDRAVIL":                       ["SAJE", "EVGO", "KAVE"],
+  "VARSTVO OSEBNIH PODATKOV":                            ["NESE", "MIPO", "TIHO", "KAVE", "DORO", "LUZE"]
+}

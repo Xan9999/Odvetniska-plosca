@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jadek &amp; Pensa — Analiza</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* ── Citation sentence highlight ── */
+    .cited-sentence {
+      border-bottom: 2px dotted #f59e0b;
+      cursor: default;
+      border-radius: 2px;
+      padding-bottom: 1px;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .cited-sentence:hover, .cited-sentence.active {
+      background: #fffbeb;
+      border-bottom-color: #d97706;
+    }
+    .cite-sup { font-size: 0.65em; color: #92400e; font-weight: 700; margin-left: 1px; vertical-align: super; }
+
+    /* ── Q&A answer hover ── */
+    .qa-item {
+      transition: background 0.12s, border-left-color 0.12s;
+      border-radius: 6px;
+      border-left: 3px solid transparent;
+    }
+    .qa-item:hover, .qa-item.active {
+      background: #eff6ff;
+      border-left-color: #3b82f6;
+    }
+
+    /* ── Inline hover popover ── */
+    #hover-popover {
+      position: fixed;
+      z-index: 60;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.13);
+      padding: 11px 14px;
+      max-width: 380px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.1s;
+    }
+    #hover-popover.visible { opacity: 1; }
+
+    /* ── Draft paragraphs ── */
+    .draft-body p { margin-bottom: 0.85rem; line-height: 1.75; }
+
+    /* ── Traffic lights ── */
+    .traffic-green  { background: #22c55e; }
+    .traffic-orange { background: #f97316; }
+    .traffic-red    { background: #ef4444; }
+    .traffic-dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+    /* ── Team panel drop zones ── */
+    .team-panel-in  { border: 2px dashed #a5b4fc; background: #eef2ff; }
+    .team-panel-out { border: 2px dashed #e2e8f0; background: #f8fafc; }
+    .team-panel-in.drag-over  { border-color: #6366f1; background: #e0e7ff; }
+    .team-panel-out.drag-over { border-color: #94a3b8; background: #f1f5f9; }
+    .atty-card { cursor: grab; transition: opacity 0.15s, box-shadow 0.15s; }
+    .atty-card:active { cursor: grabbing; }
+    .atty-card.dragging { opacity: 0.4; }
+
+    /* ── Print ── */
+    @media print {
+      body > *:not(#print-view) { display: none !important; }
+      #print-view { display: block !important; }
+      #print-view { font-family: Georgia, serif; font-size: 11pt; color: #111; line-height: 1.6; padding: 2cm; }
+      #print-view h1 { font-size: 15pt; font-weight: bold; margin-bottom: 4pt; }
+      #print-view h2 { font-size: 12pt; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 3pt; margin: 16pt 0 6pt; }
+      #print-view .meta { color: #555; font-size: 9.5pt; }
+      #print-view .check-item { display: flex; gap: 8pt; align-items: flex-start; margin: 3pt 0; }
+      #print-view .check-item input { margin-top: 2pt; }
+      #print-view pre { font-family: monospace; font-size: 9pt; background: #f5f5f5; padding: 8pt; white-space: pre-wrap; }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans">
+
+  <!-- Print view (hidden, shown only on print) -->
+  <div id="print-view" style="display:none"></div>
+
+  <!-- Inline hover popover -->
+  <div id="hover-popover">
+    <!-- Citation mode -->
+    <div id="pop-cite" class="hidden">
+      <div class="flex items-start gap-2.5">
+        <span id="pop-cite-num" class="shrink-0 text-xs font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md"></span>
+        <div class="min-w-0">
+          <p id="pop-cite-title"   class="text-sm font-semibold text-slate-800 leading-snug"></p>
+          <p id="pop-cite-year"    class="text-xs text-slate-400 mb-0.5"></p>
+          <p id="pop-cite-desc"    class="text-xs text-slate-600 leading-relaxed"></p>
+          <p id="pop-cite-outcome" class="text-xs text-green-700 font-medium mt-1"></p>
+        </div>
+      </div>
+    </div>
+    <!-- Q&A mode -->
+    <div id="pop-qa" class="hidden">
+      <div class="flex items-center gap-2 mb-1.5">
+        <span class="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">Vprašanje stranke</span>
+        <span id="pop-qa-vir" class="hidden text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded px-2 py-0.5"></span>
+      </div>
+      <p id="pop-qa-text" class="text-xs text-slate-700 leading-relaxed italic"></p>
+    </div>
+  </div>
+
+  <!-- Global tooltip -->
+  <div id="g-tooltip"
+    class="hidden fixed z-50 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-xl pointer-events-none leading-relaxed"
+    style="max-width:280px"></div>
+
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
+    <div class="max-w-7xl mx-auto px-6 py-3 flex items-center gap-4">
+      <a href="/" class="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 text-sm shrink-0">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        </svg>Nazaj
+      </a>
+      <h1 id="page-title" class="flex-1 text-slate-800 font-semibold text-base truncate">Nalagam…</h1>
+      <div id="status-badge" class="shrink-0"></div>
+      <button onclick="exportPDF()"
+        class="shrink-0 text-xs text-slate-500 hover:text-slate-800 border border-slate-200 px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h4a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+        </svg>Export PDF
+      </button>
+    </div>
+  </header>
+
+  <!-- Loading -->
+  <div id="page-loading" class="flex items-center justify-center py-20 text-slate-400">
+    <svg class="w-7 h-7 animate-spin" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+    </svg>
+  </div>
+
+  <!-- Content -->
+  <div id="page-content" class="hidden max-w-7xl mx-auto px-6 py-6 flex flex-col lg:flex-row gap-6 items-start">
+
+    <!-- ── LEFT ── -->
+    <div class="flex-1 min-w-0 space-y-4">
+
+      <!-- Draft panel -->
+      <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h2 class="font-semibold text-slate-800 text-sm">Osnutek odgovora stranki</h2>
+          <div class="flex items-center gap-2">
+            <button onclick="copyDraft()"
+              class="text-xs text-slate-500 hover:text-slate-800 border border-slate-200 px-3 py-1.5 rounded-md flex items-center gap-1 transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+              </svg>Kopiraj
+            </button>
+            <button onclick="markSent()"
+              class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md font-medium transition-colors">
+              Označi kot poslano
+            </button>
+          </div>
+        </div>
+
+        <!-- Draft body -->
+        <div id="draft-wrapper" class="px-6 py-5">
+          <div id="draft-body" class="draft-body text-slate-700 text-sm"></div>
+        </div>
+
+      </div>
+
+      <!-- Original mail -->
+      <details class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+        <summary class="px-5 py-3 cursor-pointer text-sm font-medium text-slate-500 hover:text-slate-800 select-none flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>Originalni mail
+        </summary>
+        <pre id="original-email"
+          class="px-5 py-4 text-xs text-slate-500 font-mono whitespace-pre-wrap border-t border-slate-100 leading-relaxed bg-slate-50 overflow-x-auto"></pre>
+      </details>
+    </div>
+
+    <!-- ── RIGHT: Dashboard ── -->
+    <div id="right-panel" class="w-full lg:w-80 xl:w-96 shrink-0 space-y-4">
+
+      <!-- Conflict -->
+      <div id="conflict-card" class="rounded-xl border p-4 shadow-sm"></div>
+
+      <!-- Deadline -->
+      <div id="deadline-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Rok</h3>
+        <div class="flex items-center gap-3">
+          <div id="deadline-icon" class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0">⏱</div>
+          <div>
+            <p id="deadline-label" class="font-semibold text-slate-800 text-sm"></p>
+            <p id="deadline-desc"  class="text-xs text-slate-500 mt-0.5"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Metrics -->
+      <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+        <div class="flex items-baseline gap-2 mb-2">
+          <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Analiza zadeve</h3>
+          <span id="legal-field-badge" class="text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded px-2 py-0.5 leading-tight"></span>
+        </div>
+        <p id="summary-text" class="text-xs text-slate-600 leading-relaxed mb-3"></p>
+        <div class="space-y-2">
+          <div class="bg-slate-50 rounded-lg px-3 py-2">
+            <p class="text-xs text-slate-400 mb-0.5">Ocena zaslužka</p>
+            <p id="profit-num" class="text-sm font-bold text-slate-800"></p>
+          </div>
+          <div class="bg-slate-50 rounded-lg px-3 py-2 cursor-help" data-tooltip-key="zahtevnost_razlaga">
+            <p class="text-xs text-slate-400 mb-1">Zahtevnost</p>
+            <div class="flex items-center gap-2">
+              <div class="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                <div id="complexity-bar" class="h-full bg-indigo-500 rounded-full transition-all"></div>
+              </div>
+              <span id="complexity-num" class="text-xs font-bold text-slate-700 w-8 text-right"></span>
+            </div>
+          </div>
+          <div class="bg-slate-50 rounded-lg px-3 py-2 cursor-help" data-tooltip-key="aml_razlaga">
+            <p class="text-xs text-slate-400 mb-0.5">AML / KYC tveganje</p>
+            <p id="aml-label" class="text-sm font-semibold"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- AML checklist -->
+      <div id="aml-checklist-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Potrebna dokumentacija (ZPPDFT-2)</h3>
+        <ul id="aml-checklist" class="space-y-2 mb-3"></ul>
+        <div class="flex gap-1.5">
+          <input id="aml-add-input" type="text" placeholder="Dodaj dokument…"
+            class="flex-1 text-xs border border-slate-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-indigo-400"
+            onkeydown="if(event.key==='Enter') addAmlItem()" />
+          <button onclick="addAmlItem()"
+            class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1.5 rounded-md transition-colors shrink-0">+</button>
+        </div>
+      </div>
+
+      <!-- Team — two panels -->
+      <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Ekipa</h3>
+        <div class="space-y-3">
+
+          <!-- In team -->
+          <div>
+            <p class="text-xs font-medium text-indigo-600 mb-1.5">V ekipi</p>
+            <div id="team-in-panel"
+              class="team-panel-in rounded-lg p-1.5 min-h-[50px] space-y-1"
+              ondragover="panelDragOver(event,'in')"
+              ondragleave="panelDragLeave(event,'in')"
+              ondrop="panelDrop(event,'in')">
+            </div>
+          </div>
+
+          <!-- Available -->
+          <div>
+            <p class="text-xs font-medium text-slate-400 mb-1.5">Razpoložljivi</p>
+            <div id="team-out-panel"
+              class="team-panel-out rounded-lg p-1.5 min-h-[50px] space-y-1"
+              ondragover="panelDragOver(event,'out')"
+              ondragleave="panelDragLeave(event,'out')"
+              ondrop="panelDrop(event,'out')">
+            </div>
+          </div>
+        </div>
+
+        <!-- Experience warning -->
+        <div id="experience-warning" class="hidden mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <span class="text-amber-500 shrink-0">⚠</span>
+          <p class="text-xs text-amber-800">Ocenjena zahtevnost je visoka za izkušenost izbrane ekipe</p>
+        </div>
+      </div>
+
+      <!-- Questions -->
+      <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Usmerjevalna vprašanja</h3>
+        <p class="text-xs text-indigo-500 mb-3">Označena se pojavijo v mailu</p>
+        <ul id="questions-list" class="space-y-2.5"></ul>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // ── Constants ──────────────────────────────────────────────────────────────
+    const LOGGED_IN  = { name: "Aleksandra Merc", acronym: "SAJE", title: "Odvetnica" };
+    const WL_DOT     = { green: 'traffic-green', orange: 'traffic-orange', red: 'traffic-red' };
+    const AML_STYLE  = { nizko: 'text-green-600', srednje: 'text-amber-600', visoko: 'text-red-600' };
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    let record        = null;
+    let teamIn        = [];   // acronyms in team
+    let teamOut       = [];   // acronyms not in team (but available for field)
+    let checkedQs     = new Set();
+    let allFieldAttys = [];
+    let citations     = {};
+    let qaBlocks      = [];
+    let amlChecklist  = [];   // editable AML documentation list
+    let dragAcr       = null;   // acronym being dragged
+    let currentHover  = null;   // { type: 'cite'|'qa', key }
+
+    const emailId = new URLSearchParams(location.search).get('id');
+
+    // ── Load ──────────────────────────────────────────────────────────────────
+    async function load() {
+      if (!emailId) return;
+      try {
+        const r = await fetch(`/api/emails/${emailId}`).then(res => {
+          if (!res.ok) throw new Error(res.statusText);
+          return res.json();
+        });
+        render(r);
+      } catch(e) {
+        document.getElementById('page-loading').textContent = 'Napaka: ' + e.message;
+      }
+    }
+
+    // ── Main render ───────────────────────────────────────────────────────────
+    function render(r) {
+      record        = r;
+      citations     = r.citations   || {};
+      qaBlocks      = r.qa_blocks   || [];
+      allFieldAttys = r.analysis?.all_field_attorneys || [];
+      amlChecklist  = [...(r.analysis?.aml_checklist || [])];
+
+      const zahtevnost = r.analysis?.zahtevnost || 5;
+      const cutoff     = Math.min(zahtevnost >= 6 ? 3 : 2, allFieldAttys.length);
+      teamIn  = allFieldAttys.slice(0, cutoff).map(a => a.acronym);
+      teamOut = allFieldAttys.slice(cutoff).map(a => a.acronym);
+
+      const qs = r.analysis?.dodatna_vprasanja || [];
+      checkedQs = new Set([0, 1, 2].filter(i => i < qs.length));
+
+      document.getElementById('page-loading').classList.add('hidden');
+      document.getElementById('page-content').classList.remove('hidden');
+
+      document.getElementById('page-title').textContent = `${r.sender.name} — ${r.sender.subject}`;
+
+      const sMap = { new:['bg-blue-100 text-blue-700','Nova'], reviewed:['bg-purple-100 text-purple-700','Pregledano'], sent:['bg-green-100 text-green-700','Poslano'] };
+      const [sc, sl] = sMap[r.status] || sMap.new;
+      document.getElementById('status-badge').innerHTML = `<span class="text-xs font-medium px-2 py-1 rounded-md ${sc}">${sl}</span>`;
+
+      renderConflict(r.conflict || {});
+      renderDeadline(r.analysis?.rok || {});
+      renderMetrics(r.analysis || {});
+      renderAmlChecklist(r.analysis || {});
+      renderTeamPanels();
+      renderQuestionsPanel();
+      checkExperienceWarning();
+      rebuildDraft();
+
+      document.getElementById('original-email').textContent =
+        `Od: ${r.sender.name} <${r.sender.email}>\nZadeva: ${r.sender.subject}\n\n${r.body}`;
+
+      setupDraftHovers();
+      setupTooltips();
+    }
+
+    // ── Draft build ───────────────────────────────────────────────────────────
+    function rebuildDraft() {
+      document.getElementById('draft-body').innerHTML = buildDraftHTML();
+    }
+
+    function buildDraftHTML() {
+      if (!record?.draft) return '<p class="text-slate-400 italic">Ni osnutka.</p>';
+      let text = record.draft;
+
+      // Normalize placeholder variants — LLM sometimes uses Slovenian diacritics (Š, Č…)
+      text = text.replace(/\{\{USMERJEVALNA_VPRA[SŠ]ANJA\}\}/gi, '{{USMERJEVALNA_VPRASANJA}}');
+      text = text.replace(/\{\{PREDLAGANA_EKIPA\}\}/gi, '{{PREDLAGANA_EKIPA}}');
+      text = text.replace(/\{\{QA_ODGOVORI\}\}/gi, '{{QA_ODGOVORI}}');
+      text = text.replace(/\{\{POTREBNA[_ ]DOKUMENTACIJA\}\}/gi, '{{POTREBNA_DOKUMENTACIJA}}');
+
+      // Team names — Oxford-style "in" before last name
+      const namesList = teamIn.map(acr => allFieldAttys.find(a => a.acronym === acr)?.name).filter(Boolean);
+      const names = namesList.length <= 1
+        ? (namesList[0] || '—')
+        : namesList.slice(0, -1).join(', ') + ' & ' + namesList[namesList.length - 1];
+      text = text.replaceAll('{{PREDLAGANA_EKIPA}}', names);
+      // Remove "v sestavi" if LLM still wrote it
+      text = text.replace(/\bekipi v sestavi\b/g, 'ekipi');
+
+      // Fix verb agreement after team substitution (1→ima, 2→imata, 3+→imajo)
+      const verbForm = teamIn.length <= 1 ? 'ima' : teamIn.length === 2 ? 'imata' : 'imajo';
+      text = text.replace(/\bki ima(?:ta|jo)?\b/g, `ki ${verbForm}`);
+
+      // Logged-in attorney signature
+      text = text.replace('[Vaše ime]', LOGGED_IN.name);
+
+      // Ensure placeholders exist (fallback if LLM forgot them)
+      if (!text.includes('{{USMERJEVALNA_VPRASANJA}}') && !text.includes('{{POTREBNA_DOKUMENTACIJA}}')) {
+        const sigIdx = text.lastIndexOf(LOGGED_IN.name);
+        const ins = sigIdx > 0 ? sigIdx : text.length;
+        text = text.slice(0, ins).trimEnd() +
+          '\n\n{{USMERJEVALNA_VPRASANJA}}\n\n{{POTREBNA_DOKUMENTACIJA}}\n\n' +
+          text.slice(ins);
+      } else if (!text.includes('{{POTREBNA_DOKUMENTACIJA}}')) {
+        // Insert docs block after questions block
+        text = text.replace('{{USMERJEVALNA_VPRASANJA}}', '{{USMERJEVALNA_VPRASANJA}}\n\n{{POTREBNA_DOKUMENTACIJA}}');
+      }
+
+      // Assign citation numbers in order of appearance
+      const citNums = {};
+      let n = 1;
+      text.replace(/\[REF:[^\]]+\]/g, m => {
+        const k = m.slice(1,-1); if (!(k in citNums)) citNums[k] = n++;
+      });
+
+      return text.split(/\n\n+/).filter(p => p.trim()).map(para => {
+        if (para.includes('{{QA_ODGOVORI}}')) {
+          const parts = para.split('{{QA_ODGOVORI}}');
+          let h = '';
+          if (parts[0]?.trim()) h += `<p>${processParaCit(parts[0].trim(), citNums).replace(/\n/g,'<br>')}</p>`;
+          h += buildQABlock();
+          if (parts[1]?.trim()) h += `<p>${processParaCit(parts[1].trim(), citNums).replace(/\n/g,'<br>')}</p>`;
+          return h;
+        }
+        if (para.includes('{{POTREBNA_DOKUMENTACIJA}}')) {
+          if (!amlChecklist.length) return '';
+          const parts = para.split('{{POTREBNA_DOKUMENTACIJA}}');
+          let h = '';
+          if (parts[0]?.trim()) h += `<p>${processParaCit(parts[0].trim(), citNums).replace(/\n/g,'<br>')}</p>`;
+          h += buildDocumentationBlock();
+          if (parts[1]?.trim()) h += `<p>${processParaCit(parts[1].trim(), citNums).replace(/\n/g,'<br>')}</p>`;
+          return h;
+        }
+        if (para.includes('{{USMERJEVALNA_VPRASANJA}}')) {
+          const qs = record?.analysis?.dodatna_vprasanja || [];
+          const anyChecked = qs.some((_,i) => checkedQs.has(i));
+          if (!anyChecked) return ''; // hide the entire paragraph if nothing selected
+          const parts = para.split('{{USMERJEVALNA_VPRASANJA}}');
+          let h = '';
+          if (parts[0]?.trim()) h += `<p>${processParaCit(parts[0].trim(), citNums).replace(/\n/g,'<br>')}</p>`;
+          h += buildQuestionsBlock();
+          if (parts[1]?.trim()) h += `<p>${processParaCit(parts[1].trim(), citNums).replace(/\n/g,'<br>')}</p>`;
+          return h;
+        }
+        return `<p>${processParaCit(para, citNums).replace(/\n/g,'<br>')}</p>`;
+      }).join('');
+    }
+
+    // ── Citation sentence wrapping ────────────────────────────────────────────
+    // FIX: a period immediately before [REF:...] is the sentence's OWN period,
+    // not a sentence boundary. We look further back for the previous sentence end.
+    function processParaCit(para, citNums) {
+      const markers = [];
+      const pat = /\[REF:[^\]]+\]/g;
+      let m;
+      while ((m = pat.exec(para)) !== null) {
+        const key = m[0].slice(1,-1);
+        markers.push({ index: m.index, end: m.index + m[0].length, key, num: citNums[key] || 0 });
+      }
+      if (!markers.length) return esc(para);
+
+      let result = '', lastEnd = 0;
+      for (const mk of markers) {
+        // Find sentence start.
+        // Only treat ./?/! as a boundary when followed by a SPACE
+        // (so "sentence.[REF:id]" — the period before [ is NOT a boundary).
+        let ss = lastEnd;
+        for (let j = mk.index - 1; j >= lastEnd; j--) {
+          const ch = para[j];
+          if (ch === '\n') {
+            ss = j + 1;
+            while (ss < mk.index && para[ss] === ' ') ss++;
+            break;
+          }
+          if ((ch === '.' || ch === '!' || ch === '?') && j + 1 < mk.index && para[j+1] === ' ') {
+            ss = j + 1;
+            while (ss < mk.index && para[ss] === ' ') ss++;
+            break;
+          }
+        }
+        result += esc(para.substring(lastEnd, ss));
+        // sentence includes the period before [REF:...] (para.substring(ss, mk.index))
+        result += `<span class="cited-sentence" data-ref="${mk.key}" data-num="${mk.num}">${esc(para.substring(ss, mk.index))}<sup class="cite-sup">[${mk.num}]</sup></span>`;
+        lastEnd = mk.end;
+      }
+      result += esc(para.substring(lastEnd));
+      return result;
+    }
+
+    // ── Q&A block in draft ────────────────────────────────────────────────────
+    function buildQABlock() {
+      if (!qaBlocks.length) return '';
+      const items = qaBlocks.map((qa, i) => `
+        <div class="qa-item px-1 py-0.5 cursor-default rounded" data-qa="${i}">
+          <p class="text-sm text-slate-700 leading-relaxed">${i+1}. ${esc(qa.odgovor)}</p>
+        </div>`).join('');
+      return `<div class="my-1 space-y-0.5">${items}</div>`;
+    }
+
+    // ── Questions block in draft ──────────────────────────────────────────────
+    function buildQuestionsBlock() {
+      const qs = record?.analysis?.dodatna_vprasanja || [];
+      const checked = qs.filter((_,i) => checkedQs.has(i));
+      if (!checked.length) return '';
+      return checked.map(q => `<p class="text-sm text-slate-700">• ${esc(q)}</p>`).join('');
+    }
+
+    // ── Documentation block in draft ──────────────────────────────────────────
+    function buildDocumentationBlock() {
+      if (!amlChecklist.length) return '';
+      return amlChecklist.map(item => `<p class="text-sm text-slate-700">• ${esc(item)}</p>`).join('');
+    }
+
+    // ── Hover: citations + Q&A (event delegation + inline popover) ────────────
+    function setupDraftHovers() {
+      const wrapper = document.getElementById('draft-wrapper');
+
+      wrapper.addEventListener('mouseover', e => {
+        const cited = e.target.closest('.cited-sentence');
+        const qaEl  = e.target.closest('.qa-item');
+
+        if (cited) {
+          const ref = cited.dataset.ref;
+          if (currentHover?.key !== ref) {
+            currentHover = { type:'cite', key: ref };
+            document.querySelectorAll('.cited-sentence').forEach(x => x.classList.remove('active'));
+            cited.classList.add('active');
+            showCitePopover(ref, cited.dataset.num, cited);
+          }
+        } else if (qaEl) {
+          const idx = parseInt(qaEl.dataset.qa);
+          if (currentHover?.key !== 'qa-'+idx) {
+            currentHover = { type:'qa', key:'qa-'+idx };
+            document.querySelectorAll('.qa-item').forEach(x => x.classList.remove('active'));
+            qaEl.classList.add('active');
+            showQAPopover(idx, qaEl);
+          }
+        } else {
+          if (currentHover) {
+            currentHover = null;
+            hidePopover();
+            document.querySelectorAll('.cited-sentence,.qa-item').forEach(x => x.classList.remove('active'));
+          }
+        }
+      });
+
+      wrapper.addEventListener('mouseleave', () => {
+        currentHover = null;
+        hidePopover();
+        document.querySelectorAll('.cited-sentence,.qa-item').forEach(x => x.classList.remove('active'));
+      });
+    }
+
+    function positionPopover(anchorEl) {
+      const pop = document.getElementById('hover-popover');
+      const rect = anchorEl.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const gap = 6;
+      let left = rect.left;
+      // clamp so it doesn't overflow right edge
+      if (left + 380 > vw - 12) left = vw - 380 - 12;
+      if (left < 8) left = 8;
+      pop.style.left = left + 'px';
+      pop.style.top  = (rect.bottom + gap) + 'px';
+    }
+
+    function showCitePopover(refKey, num, anchorEl) {
+      const cit = citations[refKey];
+      if (!cit) return;
+      const pop = document.getElementById('hover-popover');
+      document.getElementById('pop-cite').classList.remove('hidden');
+      document.getElementById('pop-qa').classList.add('hidden');
+      document.getElementById('pop-cite-num').textContent   = `[${num}]`;
+      document.getElementById('pop-cite-title').textContent = cit.naslov || '';
+      document.getElementById('pop-cite-year').textContent  = cit.leto ? `Leto ${cit.leto}` : '';
+      document.getElementById('pop-cite-desc').textContent  = cit.opis || '';
+      document.getElementById('pop-cite-outcome').textContent = cit.izid ? `✓ ${cit.izid}` : '';
+      positionPopover(anchorEl);
+      pop.classList.add('visible');
+    }
+
+    function showQAPopover(idx, anchorEl) {
+      const qa = qaBlocks[idx];
+      if (!qa) return;
+      const pop = document.getElementById('hover-popover');
+      document.getElementById('pop-qa').classList.remove('hidden');
+      document.getElementById('pop-cite').classList.add('hidden');
+      document.getElementById('pop-qa-text').textContent = qa.vprasanje || '';
+      // vir_namig hidden until legal DB integration
+      document.getElementById('pop-qa-vir').classList.add('hidden');
+      positionPopover(anchorEl);
+      pop.classList.add('visible');
+    }
+
+    function hidePopover() {
+      document.getElementById('hover-popover').classList.remove('visible');
+    }
+
+    // ── Conflict ──────────────────────────────────────────────────────────────
+    function renderConflict(conflict) {
+      const status = conflict.status || 'ok';
+      const cfg = {
+        ok:       { cls:'bg-green-50 border-green-200',  icon:'✅', title:'Ni konflikta interesov',   msg:'Nobena od vpletenih entitet ni zaznana med obstoječimi strankami.', tc:'text-green-900', sc:'text-green-700' },
+        tveganje: { cls:'bg-amber-50 border-amber-300',  icon:'⚠️', title:'Potencialno tveganje',    msg:'Ena od vpletenih entitet se ujema z obstoječo stranko. Preverite pred odgovorom.',  tc:'text-amber-900', sc:'text-amber-700' },
+        konflikt: { cls:'bg-red-50 border-red-300',      icon:'🚫', title:'KONFLIKT INTERESOV',      msg:'Nasprotna stran je obstoječa stranka pisarne. E-mail NE SME biti poslan brez ročnega pregleda.', tc:'text-red-900', sc:'text-red-700' },
+      }[status] || {};
+
+      const matches = [...(conflict.conflicts||[]), ...(conflict.risks||[])];
+      const matchHtml = matches.length ? '<div class="mt-3 space-y-1.5">' + matches.map(m =>
+        `<div class="flex items-center justify-between text-xs bg-white/70 rounded-lg px-3 py-2">
+          <div><span class="font-semibold">${m.entity}</span><span class="text-slate-400 ml-1">(${roleLabel(m.role)})</span></div>
+          <div class="text-right text-slate-500">${m.matched_client} <span class="text-slate-300">${m.score}%</span></div>
+        </div>`).join('') + '</div>' : '';
+
+      const ret = (conflict.returning||[]);
+      const retHtml = ret.length ? `<p class="mt-2 text-xs ${cfg.sc} opacity-70">Obstoječe stranke (ok): ${ret.map(r=>r.entity).join(', ')}</p>` : '';
+
+      const card = document.getElementById('conflict-card');
+      card.className = `rounded-xl border p-4 shadow-sm ${cfg.cls}`;
+      card.innerHTML = `<div class="flex items-start gap-3">
+        <span class="text-xl shrink-0">${cfg.icon}</span>
+        <div class="min-w-0">
+          <p class="font-bold text-sm ${cfg.tc}">${cfg.title}</p>
+          <p class="text-xs mt-0.5 ${cfg.sc} leading-relaxed">${cfg.msg}</p>
+          ${matchHtml}${retHtml}
+        </div></div>`;
+    }
+
+    function roleLabel(r) {
+      return ({stranke:'stranka',nasprotna_stran:'nasprotna stran',ostali_upleteni:'vpleteni'})[r]||r;
+    }
+
+    // ── Deadline ──────────────────────────────────────────────────────────────
+    function renderDeadline(rok) {
+      if (!rok?.nujno || rok?.cas_dni == null) return;
+      document.getElementById('deadline-card').classList.remove('hidden');
+      const urgent = rok.cas_dni <= 1;
+      document.getElementById('deadline-icon').textContent = urgent ? '🚨' : '⏱';
+      const lbl = document.getElementById('deadline-label');
+      lbl.textContent = rok.cas_dni === 1 ? 'Manj kot 1 dan' : `${rok.cas_dni} dni`;
+      lbl.className = `font-semibold text-sm ${urgent ? 'text-red-600' : 'text-amber-700'}`;
+      document.getElementById('deadline-desc').textContent = rok.opis || '';
+    }
+
+    // ── Metrics ───────────────────────────────────────────────────────────────
+    function renderMetrics(a) {
+      document.getElementById('legal-field-badge').textContent = a.legal_field || '';
+      document.getElementById('summary-text').textContent = a.povzetek || '';
+      const z = a.zahtevnost || 5;
+      document.getElementById('complexity-bar').style.width = `${z*10}%`;
+      document.getElementById('complexity-num').textContent = `${z}/10`;
+      document.getElementById('profit-num').textContent = (a.profit||0).toLocaleString('sl-SI') + ' €';
+      const aml = a.aml_tveganje || 'nizko';
+      const el = document.getElementById('aml-label');
+      el.textContent = {nizko:'Nizko',srednje:'Srednje',visoko:'Visoko ⚠️'}[aml]||aml;
+      el.className = `text-sm font-semibold ${AML_STYLE[aml]||''}`;
+    }
+
+    // ── AML checklist (editable) ───────────────────────────────────────────────
+    function renderAmlChecklist(a) {
+      const card = document.getElementById('aml-checklist-card');
+      if (!amlChecklist.length) return;
+      const borderCls = { nizko: 'border-slate-200', srednje: 'border-amber-300', visoko: 'border-red-300' }[a.aml_tveganje] || 'border-slate-200';
+      card.className = `bg-white border ${borderCls} rounded-xl p-4 shadow-sm`;
+      card.classList.remove('hidden');
+      renderAmlItems();
+    }
+
+    function renderAmlItems() {
+      document.getElementById('aml-checklist').innerHTML = amlChecklist.map((item, i) => `
+        <li class="flex items-start gap-2 group">
+          <span class="text-slate-300 mt-0.5 shrink-0">•</span>
+          <span class="text-xs text-slate-700 leading-relaxed flex-1">${esc(item)}</span>
+          <button onclick="removeAmlItem(${i})"
+            class="shrink-0 text-slate-300 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+            title="Odstrani">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </li>`).join('');
+    }
+
+    function removeAmlItem(i) {
+      amlChecklist.splice(i, 1);
+      renderAmlItems();
+      rebuildDraft();
+    }
+
+    function addAmlItem() {
+      const input = document.getElementById('aml-add-input');
+      const val = input.value.trim();
+      if (!val) return;
+      amlChecklist.push(val);
+      input.value = '';
+      renderAmlItems();
+      rebuildDraft();
+    }
+
+    // ── Tooltip (right panel) ─────────────────────────────────────────────────
+    function setupTooltips() {
+      const panel = document.getElementById('right-panel');
+      panel.addEventListener('mouseover', e => {
+        const el = e.target.closest('[data-tooltip-key]');
+        if (!el) return;
+        const text = record?.analysis?.[el.dataset.tooltipKey];
+        if (text) showGTip(e, text);
+      });
+      panel.addEventListener('mousemove', e => moveGTip(e));
+      panel.addEventListener('mouseout',  e => { if (!e.target.closest('[data-tooltip-key]')) hideGTip(); });
+      panel.addEventListener('mouseleave', hideGTip);
+    }
+    function showGTip(e, text) { const t=document.getElementById('g-tooltip'); t.textContent=text; t.classList.remove('hidden'); moveGTip(e); }
+    function moveGTip(e) { const t=document.getElementById('g-tooltip'); if(t.classList.contains('hidden'))return; t.style.left=Math.min(e.clientX+14,window.innerWidth-295)+'px'; t.style.top=(e.clientY-10)+'px'; }
+    function hideGTip() { document.getElementById('g-tooltip').classList.add('hidden'); }
+
+    // ── Team panels ───────────────────────────────────────────────────────────
+    function renderTeamPanels() {
+      document.getElementById('team-in-panel').innerHTML  = renderAttyList(teamIn,  'in')  || '<p class="text-xs text-slate-400 text-center py-3">Prazno</p>';
+      document.getElementById('team-out-panel').innerHTML = renderAttyList(teamOut, 'out') || '<p class="text-xs text-slate-400 text-center py-3">—</p>';
+    }
+
+    function renderAttyList(acronyms, panel) {
+      return acronyms.map(acr => {
+        const a = allFieldAttys.find(x => x.acronym === acr);
+        if (!a) return '';
+        const dot  = WL_DOT[a.workload_color] || 'traffic-orange';
+        const stars = '★'.repeat(a.experience||0) + '☆'.repeat(5-(a.experience||0));
+        return `<div class="atty-card flex items-center gap-1.5 px-2 py-1.5 rounded-md bg-white border border-slate-100 shadow-sm text-xs select-none"
+                     draggable="true"
+                     data-acr="${acr}"
+                     data-panel="${panel}"
+                     ondragstart="attyDragStart(event,'${acr}')"
+                     ondragend="attyDragEnd(event)"
+                     ondblclick="${panel==='in'?`removeFromTeam('${acr}')`:`moveToTeam('${acr}')`}">
+          <span class="traffic-dot ${dot}"></span>
+          <div class="flex-1 min-w-0">
+            <p class="font-medium text-slate-800 truncate">${a.name}</p>
+            <p class="text-slate-400">${a.workload}/3</p>
+          </div>
+          <span class="text-amber-400 shrink-0" title="Izkušnje ${a.experience||0}/5">${stars}</span>
+        </div>`;
+      }).join('');
+    }
+
+    // Move functions (also triggered by double-click)
+    function moveToTeam(acr) {
+      teamOut = teamOut.filter(x => x !== acr);
+      teamIn.push(acr);
+      renderTeamPanels();
+      rebuildDraft();
+      checkExperienceWarning();
+    }
+    function removeFromTeam(acr) {
+      teamIn = teamIn.filter(x => x !== acr);
+      teamOut.push(acr);
+      renderTeamPanels();
+      rebuildDraft();
+      checkExperienceWarning();
+    }
+
+    // Drag-drop between panels
+    function attyDragStart(e, acr) {
+      dragAcr = acr;
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => e.target?.classList.add('dragging'), 0);
+    }
+    function attyDragEnd(e) {
+      e.target?.classList.remove('dragging');
+      dragAcr = null;
+      document.getElementById('team-in-panel').classList.remove('drag-over');
+      document.getElementById('team-out-panel').classList.remove('drag-over');
+    }
+    function panelDragOver(e, panel) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      document.getElementById(`team-${panel}-panel`).classList.add('drag-over');
+    }
+    function panelDragLeave(e, panel) {
+      document.getElementById(`team-${panel}-panel`).classList.remove('drag-over');
+    }
+    function panelDrop(e, targetPanel) {
+      e.preventDefault();
+      document.getElementById(`team-${targetPanel}-panel`).classList.remove('drag-over');
+      if (!dragAcr) return;
+      const srcPanel = teamIn.includes(dragAcr) ? 'in' : 'out';
+      if (srcPanel === targetPanel) return;
+      targetPanel === 'in' ? moveToTeam(dragAcr) : removeFromTeam(dragAcr);
+    }
+
+    // Experience check
+    function checkExperienceWarning() {
+      const z = record?.analysis?.zahtevnost || 5;
+      const totalExp = teamIn.map(acr => allFieldAttys.find(a=>a.acronym===acr)?.experience||0).reduce((s,v)=>s+v,0);
+      document.getElementById('experience-warning').classList.toggle('hidden', totalExp >= z);
+    }
+
+    // ── Questions panel ───────────────────────────────────────────────────────
+    function renderQuestionsPanel() {
+      const qs   = record?.analysis?.dodatna_vprasanja || [];
+      const list = document.getElementById('questions-list');
+      if (!qs.length) { list.innerHTML = '<li class="text-xs text-slate-400">Ni vprašanj</li>'; return; }
+      list.innerHTML = qs.map((q, i) => `
+        <li class="flex items-start gap-2.5">
+          <input type="checkbox" id="q-${i}" ${checkedQs.has(i)?'checked':''} onchange="toggleQuestion(${i})"
+            class="mt-0.5 rounded text-indigo-600 cursor-pointer shrink-0"/>
+          <label for="q-${i}" class="text-xs text-slate-600 leading-relaxed cursor-pointer">${esc(q)}</label>
+        </li>`).join('');
+    }
+
+    function toggleQuestion(idx) {
+      checkedQs.has(idx) ? checkedQs.delete(idx) : checkedQs.add(idx);
+      rebuildDraft();
+    }
+
+    // ── Copy ──────────────────────────────────────────────────────────────────
+    function copyDraft() {
+      if (!record) return;
+      let text = record.draft || '';
+      const nl = teamIn.map(acr => allFieldAttys.find(a=>a.acronym===acr)?.name).filter(Boolean);
+      const names = nl.length <= 1 ? (nl[0]||'—') : nl.slice(0,-1).join(', ') + ' & ' + nl[nl.length-1];
+      text = text.replaceAll('{{PREDLAGANA_EKIPA}}', names);
+      text = text.replace(/\bekipi v sestavi\b/g, 'ekipi');
+      const vf = teamIn.length <= 1 ? 'ima' : teamIn.length === 2 ? 'imata' : 'imajo';
+      text = text.replace(/\bki ima(?:ta|jo)?\b/g, `ki ${vf}`);
+      text = text.replace('[Vaše ime]', LOGGED_IN.name);
+
+      // Replace QA block
+      if (text.includes('{{QA_ODGOVORI}}')) {
+        const qaText = qaBlocks.map((qa,i) => `${i+1}. ${qa.odgovor}`).join('\n');
+        text = text.replaceAll('{{QA_ODGOVORI}}', qaText);
+      }
+
+      // Replace questions
+      const qs = record.analysis?.dodatna_vprasanja || [];
+      const qText = qs.filter((_,i)=>checkedQs.has(i)).map(q=>`• ${q}`).join('\n');
+      text = text.replaceAll('{{USMERJEVALNA_VPRASANJA}}', qText);
+      text = text.replace(/\[REF:[^\]]+\]/g, '');
+
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector('button[onclick="copyDraft()"]');
+        const orig = btn.innerHTML;
+        btn.textContent = 'Kopirano!';
+        btn.classList.add('text-green-600','border-green-300');
+        setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('text-green-600','border-green-300'); }, 1500);
+      });
+    }
+
+    async function markSent() {
+      if (!record) return;
+      await fetch(`/api/emails/${emailId}/status?status=sent`, { method:'PATCH' });
+      location.reload();
+    }
+
+    // ── Export PDF ────────────────────────────────────────────────────────────
+    function exportPDF() {
+      if (!record) return;
+      const a  = record.analysis || {};
+      const s  = record.sender   || {};
+      const cf = record.conflict || {};
+      const date = new Date(record.created_at).toLocaleDateString('sl-SI', { day:'2-digit', month:'2-digit', year:'numeric' });
+
+      const teamNames = teamIn.map(acr => {
+        const att = allFieldAttys.find(x => x.acronym === acr);
+        return att ? `${att.name} (${att.acronym})` : acr;
+      }).join(', ') || '—';
+
+      const checklistHtml = amlChecklist.length
+        ? amlChecklist.map(item => `<div class="check-item"><input type="checkbox"> <span>${esc(item)}</span></div>`).join('')
+        : '<p class="meta">Ni zahtevane dokumentacije.</p>';
+
+      const conflictHtml = {
+        ok:       '<span style="color:#16a34a">✓ Ni konflikta interesov</span>',
+        tveganje: '<span style="color:#d97706">⚠ Potencialno tveganje</span>',
+        konflikt: '<span style="color:#dc2626">✗ KONFLIKT INTERESOV</span>',
+      }[cf.status] || '—';
+
+      const amlColor = { nizko:'#16a34a', srednje:'#d97706', visoko:'#dc2626' }[a.aml_tveganje] || '#333';
+
+      document.getElementById('print-view').innerHTML = `
+        <h1>Jadek &amp; Pensa — Analiza zadeve</h1>
+        <p class="meta">Datum: ${date} &nbsp;|&nbsp; Odgovorni: ${LOGGED_IN.name}</p>
+
+        <h2>Pošiljatelj</h2>
+        <p><strong>${esc(s.name)}</strong> &lt;${esc(s.email)}&gt;<br>
+        <span class="meta">Zadeva: ${esc(s.subject)}</span></p>
+
+        <h2>Originalni mail</h2>
+        <pre>${esc(record.body)}</pre>
+
+        <h2>Analiza</h2>
+        <p><strong>Pravno področje:</strong> ${esc(a.legal_field || '—')}</p>
+        <p><strong>Povzetek:</strong> ${esc(a.povzetek || '—')}</p>
+        <p><strong>Zahtevnost:</strong> ${a.zahtevnost || '—'}/10</p>
+        <p><strong>Ocena zaslužka:</strong> ${(a.profit || 0).toLocaleString('sl-SI')} €</p>
+        <p><strong>Konflikt interesov:</strong> ${conflictHtml}</p>
+        <p><strong>AML / KYC tveganje:</strong> <span style="color:${amlColor}">${({nizko:'Nizko',srednje:'Srednje',visoko:'Visoko'})[a.aml_tveganje] || '—'}</span></p>
+        ${a.aml_razlaga ? `<p class="meta">${esc(a.aml_razlaga)}</p>` : ''}
+
+        <h2>Ekipa</h2>
+        <p>${esc(teamNames)}</p>
+
+        <h2>Potrebna dokumentacija (ZPPDFT-2)</h2>
+        ${checklistHtml}
+      `;
+      window.print();
+    }
+
+    // ── Util ──────────────────────────────────────────────────────────────────
+    function esc(t) {
+      return (t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    load();
+  </script>
+</body>
+</html>

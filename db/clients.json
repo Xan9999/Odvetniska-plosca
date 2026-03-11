@@ -1,0 +1,17 @@
+[
+  {"id": "cl-001", "name": "TechVision d.o.o.",           "fields": ["INTELEKTUALNA LASTNINA", "TEHNOLOGIJA, MEDIJI IN ELEKTRONSKE KOMUNIKACIJE"], "since": 2019, "active": true},
+  {"id": "cl-002", "name": "Petrol d.d.",                 "fields": ["ENERGETIKA", "KORPORACIJSKO PRAVO"], "since": 2015, "active": true},
+  {"id": "cl-003", "name": "Telekom Slovenije d.d.",      "fields": ["TEHNOLOGIJA, MEDIJI IN ELEKTRONSKE KOMUNIKACIJE", "REGULACIJA S PODROČJA ZDRAVIL"], "since": 2018, "active": true},
+  {"id": "cl-004", "name": "NLB d.d.",                    "fields": ["BANČNIŠTVO IN FINANCE"], "since": 2012, "active": true},
+  {"id": "cl-005", "name": "Mercator d.d.",               "fields": ["KOMERCIALNE POGODBE", "DELOVNO PRAVO"], "since": 2017, "active": false},
+  {"id": "cl-006", "name": "Krka d.d.",                   "fields": ["REGULACIJA S PODROČJA ZDRAVIL", "INTELEKTUALNA LASTNINA"], "since": 2016, "active": true},
+  {"id": "cl-007", "name": "Zavarovalnica Triglav d.d.",  "fields": ["KORPORACIJSKO PRAVO", "PREPREČEVANJE IN REŠEVANJE SPOROV"], "since": 2020, "active": true},
+  {"id": "cl-008", "name": "BTC d.d.",                    "fields": ["NEPREMIČNINE, GRADBENIŠTVO IN INFRASTRUKTURA"], "since": 2019, "active": true},
+  {"id": "cl-009", "name": "Gorenje d.d.",                "fields": ["PREVZEMI IN ZDRUŽITVE", "DELOVNO PRAVO"], "since": 2014, "active": false},
+  {"id": "cl-010", "name": "Luka Koper d.d.",             "fields": ["JAVNO NAROČANJE", "KOMERCIALNE POGODBE"], "since": 2021, "active": true},
+  {"id": "cl-011", "name": "SIJ d.d.",                    "fields": ["KORPORACIJSKO PRAVO", "BANČNIŠTVO IN FINANCE"], "since": 2020, "active": true},
+  {"id": "cl-012", "name": "Cosylab d.o.o.",              "fields": ["INTELEKTUALNA LASTNINA", "KOMERCIALNE POGODBE"], "since": 2022, "active": true},
+  {"id": "cl-013", "name": "Outfit7 d.o.o.",              "fields": ["INTELEKTUALNA LASTNINA", "VARSTVO OSEBNIH PODATKOV"], "since": 2018, "active": false},
+  {"id": "cl-014", "name": "Mura European Fashion d.o.o.","fields": ["INSOLVENČNO PRAVO IN PRESTRUKTURIRANJA"], "since": 2023, "active": true},
+  {"id": "cl-015", "name": "A1 Slovenija d.d.",           "fields": ["TEHNOLOGIJA, MEDIJI IN ELEKTRONSKE KOMUNIKACIJE", "DELOVNO PRAVO"], "since": 2021, "active": true}
+]

@@ -1,0 +1,162 @@
+# Prvi odziv naprednega odvetnika
+
+# O pisarni Jadek & Pensa
+
+Jadek & Pensa je največja odvetniška pisarna v Sloveniji tako po prihodkih kot po številu odvetnikov in zaposlenih ter ima bogato zgodovino v slovenskem pravnem prostoru, saj njeni začetki segajo že v leto 1958.
+
+Naša glavna področja delovanja so gospodarsko, korporativno in transakcijsko pravo ter preprečevanje in reševanje sporov, veliko izkušenj in močno ekipo imamo tudi na področju davčnega prava. Pri svojem delu ohranjamo najvišje standarde kakovosti ter hkrati budno spremljamo razvoj tehnoloških trendov in izzivov digitalizacije, ki vse bolj oblikujejo tudi naš poklic.
+
+## NAŠE POSLANSTVO
+
+Naše poslanstvo je zagotavljati strankam uresničitev njihovih poslovnih ciljev z našimi rešitvami. V ospredje postavljamo zavzeto in pogumno iskanje častnih poti do ciljev strank in spretno reševanje pravnih izzivov.
+
+## NAŠA VIZIJA
+
+Naša vizija je ostati odvetniška pisarna, najbolje opremljena z znanjem in tehnologijo za reševanje pravnih izzivov moderne dobe. NAŠ SLOGAN
+Zgrajeni na tradiciji. Utemeljeni na znanju. Pripravljeni na prihodnost.
+
+## NAŠE VREDNOTE
+
+Odličnost in učinkovitost pravnih storitev
+Zavedamo se, da so naše stranke vpete v dinamične procese ustvarjanja konkurenčne, razvojne in na znanju temelječe družbe. Zato si vzamemo čas, da dobro razumemo interese in izzive vsake stranke. Dodatno vrednost ustvarjamo z osebnim pristopom, učinkovito notranjo organizacijo, hitro odzivnostjo, zanesljivostjo ter poznavanjem posebnosti različnih gospodarskih panog.
+
+Bogata tradicija in usmerjenost v prihodnost
+Našo odvetniško pisarno, ki temelji na bogati tradiciji, stalno razvijamo, pri tem pa nova znanja in mladostno zagnanost združujemo z izkušnjami in modrostjo. Nenehno držanje koraka z najsodobnejšimi tehnološkimi trendi in izzivi digitalizacije ter doseganje najvišjih mednarodnih standardov kakovosti sta ključna dela naše poslovne strategije. 
+
+Ekipno delo ter mednarodno znanje in sodelovanje
+V vrhu naših prioritet sta ekipno delo in odprt pretok izkušenj med našimi strokovnjaki. V kombinaciji z vzpostavljenim odličnim sodelovanjem s številnimi odvetniškimi pisarnami v vseh državah Evropske unije, ZDA in v mnogih drugih našim strankam ponujamo pravno pomoč na številnih področjih njihovega delovanja. 
+
+### Zaupanje in sodelovanje
+
+Naši odnosi s strankami temeljijo na ustvarjanju medsebojnega zaupanja in sodelovanja z vsako stranko. Tak individualen pristop nam omogoča poglobljeno razumevanje strankinega poslovanja in trgov, na katerih posluje. To pa je pogoj za uspeh pri doseganju strankinih ciljev. 
+
+### Predanost in vztrajnost
+
+Dodano vrednost, ki pomembno prispeva k doseganju ciljev naših strank, ustvarjamo z vztrajnostjo in predanostjo našemu poslanstvu. To je temelj za zagotavljanje odličnosti in iskanje inovativnih rešitev, ki presegajo pričakovanja in gradijo dolgoročne uspehe.
+
+### Etičnost in ohranjanje zaupnosti razmerij
+
+V osrčju našega dela sta etičnost in zaupnost odnosov s strankami, kar vidimo kot temelj dolgoročnega sodelovanja. Spoštovanje najvišjih standardov varovanja podatkov je ključno za ohranjanje zaupanja in uspešno reševanje izzivov naših strank.
+
+# Kontakt za pomoč
+
+![Martin Retelj](attachment:35631ed8-e729-44e4-84c6-a0edd14b6353:Martin_Retelj.png)
+
+Martin Retelj
+
+![Nejc Setnikar](attachment:6f2e353d-4d17-47a4-b268-a918c905711e:Nejc_Setnikar.png)
+
+Nejc Setnikar
+
+![Aljaž Jadek](attachment:8b6395a5-ec6f-4df9-a1d6-355c2f717471:Aljaz_Jadek.png)
+
+Aljaž Jadek
+
+# Izziv
+
+### Ozadje
+
+Trenutni standardni odziv na poizvedbe strank ("prejeli smo, odgovorimo v nekaj dneh") predstavlja najbolj potraten ritual v odvetništvu. Odvetniški sodelavci za takšne odgovore brez dodane vrednosti porabijo tudi do en delovni dan na mesec, hkrati pa s tem zapravljajo ključno priložnost za pridobitev posla.
+
+Ključni izzivi:
+
+- Izguba konkurenčne prednosti: Raziskave (Clio, 2024) kažejo, da 79 % strank izbere pisarno, ki se prva odzove vsebinsko, ne le potrdilno.
+- Breme skladnosti (Compliance): Vsak sprejem stranke zahteva trojno preverjanje:
+1. Vsebinski odziv (razumevanje pravne težave).
+2. Konflikt interesov (po ZOdv in Kodeksu etike).
+3. AML/KYC ocena tveganja (po ZPPDFT-2).
+    - Operativna razdrobljenost: Te naloge se trenutno izvajajo zaporedno, vključujejo različne osebe in sisteme ter trajajo več dni.
+
+Odvetnik ob branju e-pošte takoj ustvari miselno sliko o področju, rokih in potrebni ekipi, vendar nima časa za takojšen prenos te slike v dodelan odgovor in izvedbo vseh regulatornih preverjanj.
+
+Vaša naloga: Zgraditi orodje na podlagi umetne inteligence, ki to vrzel premosti tako, da hkrati generira strokoven vsebinski odgovor in izvede notranje preverjanje skladnosti (konfliktov in AML tveganj). S tem se pasiven administrativni korak spremeni v takojšnjo dodano vrednost za stranko in pisarno.
+
+### Izziv
+
+Vaš cilj je zgraditi orodje, ki dohodno e-pošto stranke samodejno spremeni v vsebinski odziv in opravi takojšnjo analizo skladnosti. Orodje mora generirati dva rezultata:
+
+Rezultat A: Osnutek e-pošte za stranko
+
+Osnutek e-pošte stranki za pregled odvetniku. Predlagani vsebinski deli takega osnutka:
+
+- Personaliziran uvod in povzetek: Izkazano razumevanje težave in klasifikacija v pravna področja (npr. IP, GDPR, M&A).
+- Referenčne izkušnje: Avtomatski priklic relevantnih uspehov pisarne iz baze znanja.
+- Predlagana ekipa: Izbor 2–3 najprimernejših odvetnikov glede na specializacijo in zasedenost.
+- Usmerjena vprašanja in koraki: Konkretna vprašanja za začetek dela ter predlog naslednjega koraka (npr. klic) s časovnim okvirjem.
+
+Rezultat B: Interna nadzorna plošča za skladnost
+
+Analiza, ki odvetniku omogoči varno odločitev o prevzemu posla. Predlogi glede področji skladnosti, ki so lahko vključene v tako nadzorno ploščo:
+
+- Preverjanje konflikta interesov: Avtomatska ekstrakcija subjektov in primerjava z bazo strank (obstoj konflikta, tvegano za konflikt, ni konflikta).
+- AML/KYC ocena tveganja: Identifikacija ali zadeva zapade pod obveznosti ZPPDFT-2 ter posledično razvrstitev tveganja po ZPPDFT-2 in seznam potrebnih dokumentov.
+- Detekcija rokov: Identifikacija nujnih zakonskih ali pogodbenih rokov z indikatorji odštevanja.
+- Kapacitete pisarne: Preverjanje dejanske razpoložljivosti predlagane ekipe (semafor: zelena/oranžna/rdeča).
+
+E-pošta za stranko mora biti pripravljena kot osnutek, ki ga odvetnik lahko pregleda, prilagodi in pošlje v 2–3 minutah. Interna nadzorna plošča pa mora odvetniku ponuditi vse potrebno za odločitev o prevzemu zadeve, še preden je odgovor poslan.
+
+Pri ocenjevanju bomo dali večji poudarek visokonivojskim konceptualnim rešitvam, ki vključujejo več predlaganih elementov, namesto ozkega osredotočanja na podrobno izvedbo le nekaterih. Vendar pa morajo ti konceptualni pristopi ponujati realne, praktične rešitve in ne zgolj hipotetičnih razmišljanj.
+
+### Scenarij (za lažjo predstavo)
+
+Scenariji za testiranje orodja
+
+Orodje mora za vsako poizvedbo generirati vsebinski odgovor in nadzorno ploščo skladnosti. Spodaj je nabor poizvedb strank z različnimi vsebinskimi primeri iz prakse ter izpostavljen sprožilec za nadzorno ploščo.
+
+1. Deeptech Startup (IP & Licenciranje)
+    - Poizvedba stranke: Zaščita algoritma pred pogajanji z nemškim partnerjem in odhod soustanovitelja.
+    - Sprožilec: Konflikt interesov (nemški partner je že stranka pisarne) in vprašanje prenosa pravic IP.
+2. E-trgovina (GDPR kršitev)
+    - Poizvedba stranke: Razkritje podatkov 12.000 strank preko zunanje platforme.
+    - Sprožilec: Izjemna nujnost (72-urni rok za priglasitev nadzornemu organu že teče).
+3. Podružnica tuje firme (Delovni spor)
+    - Poizvedba stranke: Tožba zaradi odpovedi, očitki o povračilnih ukrepih; mešan jezik (SLO/ANG).
+    - Sprožilec: Preverjanje matične družbe zaradi konflikta interesov in analiza dvojezičnih dokumentov.
+4. Nemški prevzem (M&A Skrbni pregled)
+    - Poizvedba stranke: Nakup slovenskega podjetja; preverjanje IP, zaposlenih in GDPR skladnosti.
+    - Sprožilec: Potencialni konflikt (tarča je nekdanja stranka) in obvezen AML/KYC po ZPPDFT-2.
+5. UAE Holding (Visoko tveganje AML)
+    - Poizvedba stranke: Ustanovitev podružnice za upravljanje sredstev; nejasen namen in gotovinski vložki.
+    - Sprožilec: Rdeči indikatorji AML (ZAE jurisdikcija, netransparentno lastništvo, pritisk). Orodje mora predlagati zavrnitev ali poglobljen pregled.
+
+### Podatki
+
+[Podatki - Contacts & Workload Database.xlsx](attachment:14a98122-2379-43b5-b67f-f841d4474968:Podatki_-_Contacts__Workload_Database.xlsx)
+
+### Primeri rešitev
+
+Predlogi prednostnih funkcionalnosti, ki prinašajo višje število točk:
+
+Klasifikacija in povzetek: Samodejna razvrstitev poizvedbe v pravna področja (tudi pri večpredmetnih sporočilih) in priprava jedrnatega povzetka težave (3–5 stavkov) s strokovno terminologijo.
+
+Dodelitev ekipe: Izbor 2–3 najprimernejših odvetnikov na podlagi baze specializacij in izkušenj pisarne z utemeljitvijo izbire.
+
+Dodatna vprašanja: Generiranje morebitnih dodatnih vprašanj za začetno opredelitev obsega dela (npr. o kategorijah podatkov pri GDPR kršitvi).
+
+Preverjanje konflikta interesov: Ekstrakcija subjektov in primerjava z bazo zadev (✅/⚠️/🔴). Opozorilo mora ustaviti pošiljanje odgovora stranki do ročnega pregleda.
+
+AML/KYC ocena tveganja: Identifikacija obveznosti in posledično analiza indikatorjev po ZPPDFT-2 (jurisdikcija, izvor sredstev, struktura) s klasifikacijo tveganja in kontrolnim seznamom potrebne dokumentacije.
+Dodatne (bonus) funkcionalnosti, ki prinašajo manj točk, a izboljšajo rešitev:
+Povezovanje z referencami: Avtomatski priklic relevantnih izkušenj pisarne in študij primerov za vključitev v osnutek e-pošte.
+
+Večjezičnost in priloge: Obdelava sporočil v slovenščini, angleščini ali mešanici obeh ter analiza vsebine priloženih dokumentov (pogodbe, dopisi).
+
+Upravljanje rokov in nujnosti: Identifikacija zakonskih rokov (npr. 72 ur za GDPR) z aktivnim odštevalnikom na nadzorni plošči.
+
+Ocena obsega in honorarja: Interna projekcija potrebnih ur in stroškov glede na tip ter zapletenost zadeve.
+
+Operativna avtomatizacija: Samodejno izpolnjevanje obrazca za odprtje zadeve in preverjanje dejanske zasedenosti ekipe (semafor statusi).
+
+Zgoraj navedene funkcije so visoko kompleksne in zahtevajo strokovno znanje s področja pravne analitike, upravljanja podatkovnih baz, avtomatizacije in regulativne skladnosti. Popolna implementacija vsake podrobnosti ni potrebna; ključna je premišljena, visokonivojska zasnova, ki naslavlja glavne izzive in orisuje realistične rešitve za čim več funkcionalnosti. Poudarek naj bo na celoviti strategiji, ki pokriva ključna področja.
+
+### Pomen rešitve
+
+Zakaj je rešitev ključna?
+
+Preobrazba neučinkovitosti v prednost: Namesto praznih odgovorov orodje ustvari vsebinski prvi vtis. Pisarna s 15 poizvedbami tedensko prihrani 5–8 ur nezaračunljivega časa in znatno poveča stopnjo pridobivanja strank.
+
+Integrirana skladnost (Compliance): Preverjanje konflikta interesov in AML tveganj se ne izvaja naknadno, temveč hkrati z odgovorom. To zagotavlja, da nobena komunikacija ne zapusti pisarne, preden je potrjena tudi z vidika skladnosti.
+
+Tehnični izziv je avtentičen in večdimenzionalen. Ne gre za preprosto povzemanje besedila. Rešitev zahteva razčlenjevanje e-pošte, večnivojsko klasifikacijo pravnih področij, pridobivanje znanja iz podatkovnih baz pisarne, ekstrakcijo entitet in njihovo primerjavo z evidencami strank, zaznavanje vzorcev AML tveganj, dodeljevanje ekip, generiranje vprašanj, prilagojenih specifičnim dejanskim stanjem, ter izhodne podatke, ki delujejo, kot da jih je napisal odvetnik. Vse to so predlogi kaj vse je lahko integrirano v dva koherentna rezultata (e-pošta za stranko + interna nadzorna plošča).
+
+Naši mentorji prinašajo bogate praktične izkušnje z vodenjem  in delovanjem v odvetniški pisarni, upravljanjem delovnih procesov sprejema strank, izpolnjevanjem AML obveznosti in gradnjo pravno-tehnoloških produktov. S tem bodo zagotovili, da vaša ekipa ne bo razumela le tehničnih zahtev, temveč tudi človeški kontekst: kaj naredi prvi odziv zares uporaben za stranko, odvetnika in funkcijo skladnosti v pisarni.

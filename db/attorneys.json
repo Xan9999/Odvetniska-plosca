@@ -1,0 +1,23 @@
+[
+  {"acronym": "IRPE", "name": "Iris Pensa",        "workload": 2.0, "experience": 5},
+  {"acronym": "ANJA", "name": "Andraž Jadek",      "workload": 3.0, "experience": 5},
+  {"acronym": "DORO", "name": "Domen Romih",        "workload": 2.5, "experience": 3},
+  {"acronym": "MIPO", "name": "Mitja Podpečan",     "workload": 1.5, "experience": 3},
+  {"acronym": "OŽME", "name": "Ožbej Merc",         "workload": 2.0, "experience": 4},
+  {"acronym": "SAJE", "name": "Aleksandra Merc",    "workload": 2.0, "experience": 4},
+  {"acronym": "GRKO", "name": "Gregor Kovačič",     "workload": 1.0, "experience": 4},
+  {"acronym": "PAPE", "name": "Pavle Pensa",        "workload": 1.0, "experience": 5},
+  {"acronym": "NIBA", "name": "Nina Bakovnik",      "workload": 3.0, "experience": 2},
+  {"acronym": "NAME", "name": "Nastja Merlak",      "workload": 2.5, "experience": 3},
+  {"acronym": "VEKN", "name": "Veronika Bratož",    "workload": 3.0, "experience": 2},
+  {"acronym": "JULE", "name": "Jure Levovnik",      "workload": 2.5, "experience": 3},
+  {"acronym": "NESE", "name": "Nejc Setnikar",      "workload": 2.0, "experience": 4},
+  {"acronym": "JAZA", "name": "Janja Zaplotnik",    "workload": 3.0, "experience": 2},
+  {"acronym": "EVGO", "name": "Eva Gostiša",        "workload": 2.5, "experience": 2},
+  {"acronym": "BOLE", "name": "Borut Leskovec",     "workload": 2.5, "experience": 3},
+  {"acronym": "ANOŠ", "name": "Anja Oštir",         "workload": 1.5, "experience": 2},
+  {"acronym": "TIHO", "name": "Tina Horvat",        "workload": 1.5, "experience": 3},
+  {"acronym": "KAVE", "name": "Katja Vesel",        "workload": 1.0, "experience": 4},
+  {"acronym": "LUZE", "name": "Luka Ženko",         "workload": 2.0, "experience": 3},
+  {"acronym": "BORO", "name": "Boris Maver",        "workload": 2.5, "experience": 4}
+]

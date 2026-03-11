@@ -1,0 +1,26 @@
+Od: Matej Kovač <m.kovac@novamind.si>
+Zadeva: Zaščita algoritma za priporočilni sistem — nujno pred pogajanji
+
+Spoštovani,
+
+sem Matej Kovač, soustanovitelj in CEO podjetja NovaMind d.o.o., ki razvijamo platformo za personalizacijo vsebine z umetno inteligenco. Pišem vam, ker se soočamo z dvema resnima pravnima izzivoma, ki sta med seboj povezana.
+
+PRVI IZZIV — Pogajanja s TechVision d.o.o.:
+V naslednjih dveh tednih začenjamo pogajanja s podjetjem TechVision d.o.o. o licenciranju naše tehnologije za priporočilni sistem. Gre za lasten algoritem, ki smo ga razvijali tri leta in je jedro našega produkta. Skrbi nas, da bi nam nasprotna stran med pogajanji skušala "kopirati" ključne elemente algoritma, preden bi prišlo do morebitnega sporazuma. Imamo patentno prijavo v teku (slovensko, evropska še ni vložena), a formalna zaščita še ni vzpostavljena.
+
+DRUGI IZZIV — Odhod soustanovitelja:
+Pred tremi meseci je podjetje zapustil naš tehnični soustanovitelj Luka Veber, ki je bil soudeležen pri razvoju algoritma. V pogodbi o ustanovitvi (iz leta 2021) ni jasno določeno, komu pripada IP pravica do kode, ki jo je razvil v prvih 18 mesecih. Luka je podpisal standardno NDA, ne pa pogodbe o prenosu IP. Zdaj ga ni mogoče doseči, zadnja informacija je, da je zaposlen pri eni od nemških tech firm.
+
+Potrebujemo pomoč pri:
+1. Zaščiti algoritma pred pogajanji (kakšne zaščitne ukrepe storiti takoj)
+2. Razjasnitvi lastniških pravic glede Lukove kode
+3. Strukturi licenčne pogodbe s TechVision (kaj vključiti, da ne izgubimo pravic)
+
+Poslujemo od 2021, imamo 8 zaposlenih, lanska letna prihodki so bili 340.000 EUR. Zadeva je za nas eksistenčna, ker smo v fazi iskanja seed investitorjev in vsak pravni problem bi zamaknil ali porušil rundo.
+
+Prosim za sestanek čim prej, po možnosti ta teden.
+
+Lep pozdrav,
+Matej Kovač
+CEO, NovaMind d.o.o.
+GSM: 041 123 456

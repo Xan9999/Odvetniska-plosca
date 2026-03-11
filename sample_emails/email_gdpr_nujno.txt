@@ -1,0 +1,27 @@
+Od: Maja Horvat <maja.horvat@modnahisa.si>
+Zadeva: NUJNO - Kršitev varstva podatkov strank
+
+Spoštovani,
+
+sem Maja Horvat, CTO pri Modna Hiša d.o.o., slovenskem e-commerce podjetju. Pišem vam z izjemno nujno zadevo.
+
+KAJ SE JE ZGODILO:
+Včeraj zvečer (torek, 10. marca, okoli 22:15) smo zaznali, da je prišlo do nepooblaščenega dostopa do naše baze strank prek ranljivosti v vtičniku za plačilni prehod tretje strani (podjetje PayFast EU). Ranljivost je bila prisotna vsaj od 1. februarja. Potencialno so bili izpostavljeni podatki 8.500 strank: ime, priimek, e-naslov, poštni naslov, zadnje 4 cifre kartice in zgodovina naročil. Polni podatki kartic ne bi smeli biti hranjeni na naši strani (PCI DSS), a nismo 100 % prepričani.
+
+Vtičnik smo takoj onemogočili. Forenzično analizo smo začeli z interno IT ekipo, a rezultati bodo na voljo šele čez 2-3 dni.
+
+KAJ POTREBUJEMO:
+1. Ali moramo obvestiti Informacijskega pooblaščenca in v kolikšnem roku? Slišali smo za 72-urni rok — kdaj točno začne teči?
+2. Ali moramo obvestiti prizadete stranke in kdaj/kako?
+3. Kakšna je naša odgovornost napram PayFast EU kot obdelovalcu podatkov?
+4. Kakšne so potencialne kazni, če smo zamudili kakšen korak?
+5. Priporočamo interno pripravo poročila — kako se zaščitimo v primeru tožb strank?
+
+Podjetje ima 23 zaposlenih, letni promet je ca. 2,1 M EUR. PayFast EU je nizozemsko podjetje. Podpisali smo pogodbo o obdelavi podatkov, a nisem prepričana, ali vsebuje vse GDPR klavzule.
+
+Prosim za odgovor ŠE DANES — zavedamo se, da ura teče.
+
+Hvala,
+Maja Horvat
+CTO, Modna Hiša d.o.o.
+maja.horvat@modnahisa.si | 040 987 654

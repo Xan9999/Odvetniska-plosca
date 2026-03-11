@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jadek &amp; Pensa — Prejeta pošta</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .card-hover { transition: box-shadow 0.15s, transform 0.15s; }
+    .card-hover:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.10); transform: translateY(-1px); }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans">
+
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 bg-slate-800 rounded-lg flex items-center justify-center">
+          <span class="text-white text-sm font-bold">J</span>
+        </div>
+        <div>
+          <h1 class="text-slate-900 font-semibold text-base leading-tight">Jadek &amp; Pensa</h1>
+          <p class="text-slate-400 text-xs">Sistem za sprejem strank</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="deleteAll()"
+          class="text-xs text-red-400 hover:text-red-600 border border-red-200 hover:border-red-300 px-3 py-1.5 rounded-md transition-colors">
+          Zbriši vse
+        </button>
+        <button onclick="openModal()"
+          class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          Nov mail
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-6 py-8">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-slate-800 font-semibold text-lg">Poizvedbe strank
+        <span id="count-badge" class="ml-2 bg-slate-100 text-slate-500 text-xs font-medium px-2 py-0.5 rounded-full"></span>
+      </h2>
+      <p class="text-slate-400 text-sm">Razvrščeno po oceni profitabilnosti</p>
+    </div>
+
+    <div id="loading-state" class="hidden text-center py-16 text-slate-400">
+      <svg class="w-8 h-8 mx-auto mb-3 animate-spin" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+      </svg>
+      Nalagam...
+    </div>
+
+    <div id="empty-state" class="hidden text-center py-20">
+      <div class="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <svg class="w-7 h-7 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+        </svg>
+      </div>
+      <p class="text-slate-500 font-medium">Ni prejetih poizvedb</p>
+      <p class="text-slate-400 text-sm mt-1">Dodajte prvi mail s klikom na "Nov mail"</p>
+    </div>
+
+    <div id="cards-grid" class="grid gap-4 grid-cols-1 lg:grid-cols-2"></div>
+  </main>
+
+  <!-- Modal -->
+  <div id="modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl">
+      <div class="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+        <h3 class="font-semibold text-slate-800">Nov dohodni mail</h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <form id="email-form" onsubmit="submitEmail(event)" class="px-6 py-5 space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Ime pošiljatelja</label>
+            <input id="f-name" type="text" required placeholder="Ime Priimek"
+              class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">E-mail pošiljatelja</label>
+            <input id="f-email" type="email" required placeholder="ime@podjetje.si"
+              class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Zadeva</label>
+          <input id="f-subject" type="text" required placeholder="Zadeva e-pošte"
+            class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Besedilo e-pošte</label>
+          <textarea id="f-body" rows="9" required placeholder="Prilepite vsebino dobljenega maila..."
+            class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
+        </div>
+        <div class="flex items-center justify-between pt-2">
+          <button type="button" onclick="closeModal()" class="text-slate-500 hover:text-slate-700 text-sm font-medium">Prekliči</button>
+          <button id="submit-btn" type="submit"
+            class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-60 disabled:cursor-not-allowed">
+            <span id="submit-label">Analiziraj z AI</span>
+            <svg id="submit-spinner" class="hidden w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+            </svg>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const CONFLICT_LABELS = { ok: 'Ni konflikta', tveganje: 'Preverite', konflikt: 'KONFLIKT' };
+    const CONFLICT_COLORS = {
+      ok:       'bg-green-50 text-green-700 border-green-200',
+      tveganje: 'bg-amber-50  text-amber-700  border-amber-200',
+      konflikt: 'bg-red-50    text-red-700    border-red-200',
+    };
+    const CONFLICT_DOT = { ok: 'bg-green-500', tveganje: 'bg-amber-500', konflikt: 'bg-red-500' };
+    const AML_COLOR = { nizko: 'text-green-600', srednje: 'text-amber-600', visoko: 'text-red-600' };
+
+    function openModal()  { document.getElementById('modal').classList.remove('hidden'); }
+    function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+    document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+
+    async function loadEmails() {
+      document.getElementById('loading-state').classList.remove('hidden');
+      try {
+        const emails = await fetch('/api/emails').then(r => r.json());
+        document.getElementById('loading-state').classList.add('hidden');
+        const grid  = document.getElementById('cards-grid');
+        const empty = document.getElementById('empty-state');
+        document.getElementById('count-badge').textContent = emails.length;
+        if (!emails.length) { empty.classList.remove('hidden'); return; }
+        empty.classList.add('hidden');
+        grid.innerHTML = emails.map(renderCard).join('');
+      } catch(e) {
+        document.getElementById('loading-state').classList.add('hidden');
+        alert('Napaka pri nalaganju: ' + e.message);
+      }
+    }
+
+    function renderCard(e) {
+      const cConf = CONFLICT_COLORS[e.conflict_status] || CONFLICT_COLORS.ok;
+      const cDot  = CONFLICT_DOT[e.conflict_status]   || CONFLICT_DOT.ok;
+      const cAml  = AML_COLOR[e.aml_tveganje]         || 'text-slate-500';
+      const statusBg = e.status === 'sent' ? 'bg-green-50' : e.status === 'reviewed' ? 'bg-blue-50' : 'bg-white';
+
+      // Show time remaining instead of nujnost %
+      let urgencyHtml = '';
+      if (e.rok?.nujno && e.rok?.cas_dni != null) {
+        const cls = e.rok.cas_dni <= 1 ? 'text-red-600 font-bold' : e.rok.cas_dni <= 3 ? 'text-amber-600 font-semibold' : 'text-slate-500';
+        urgencyHtml = `<span class="${cls} text-xs flex items-center gap-1">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-width="2" d="M12 6v6l4 2"/></svg>
+          ${e.rok.cas_dni === 1 ? 'Manj kot 1 dan' : e.rok.cas_dni + ' dni'}
+        </span>`;
+      } else if (e.nujnost >= 0.8) {
+        urgencyHtml = `<span class="text-red-500 text-xs font-semibold">Nujno</span>`;
+      }
+
+      const date = new Date(e.created_at).toLocaleDateString('sl-SI', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+
+      return `
+      <a href="/detail?id=${e.id}" class="block ${statusBg} border border-slate-200 rounded-xl p-5 card-hover cursor-pointer">
+        <div class="flex items-start justify-between mb-3">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+              <span class="text-xs font-medium bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md border border-indigo-100">${e.legal_field}</span>
+              <span class="text-xs border px-2 py-0.5 rounded-md ${cConf}">
+                <span class="status-dot ${cDot} mr-1"></span>${CONFLICT_LABELS[e.conflict_status]}
+              </span>
+              <span class="text-xs ${cAml} font-medium">AML: ${e.aml_tveganje}</span>
+            </div>
+            <p class="text-slate-800 font-semibold text-sm truncate">${e.sender.name}</p>
+            <p class="text-slate-500 text-xs truncate">${e.sender.subject}</p>
+          </div>
+          <div class="text-right ml-4 shrink-0">
+            <p class="text-xl font-bold text-slate-800">${(e.profit||0).toLocaleString('sl-SI')} €</p>
+            <p class="text-xs text-slate-400">${date}</p>
+          </div>
+        </div>
+        <p class="text-slate-500 text-xs leading-relaxed line-clamp-2 mb-3">${e.povzetek}</p>
+        <div class="flex items-center justify-end">${urgencyHtml}</div>
+      </a>`;
+    }
+
+    async function submitEmail(e) {
+      e.preventDefault();
+      const btn  = document.getElementById('submit-btn');
+      const label = document.getElementById('submit-label');
+      const spin  = document.getElementById('submit-spinner');
+      btn.disabled = true;
+      label.textContent = 'Analiziram… (~20s)';
+      spin.classList.remove('hidden');
+      try {
+        const res = await fetch('/api/emails', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            sender_name:  document.getElementById('f-name').value,
+            sender_email: document.getElementById('f-email').value,
+            subject:      document.getElementById('f-subject').value,
+            body:         document.getElementById('f-body').value,
+          }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const record = await res.json();
+        window.location.href = `/detail?id=${record.id}`;
+      } catch(err) {
+        alert('Napaka: ' + err.message);
+        btn.disabled = false;
+        label.textContent = 'Analiziraj z AI';
+        spin.classList.add('hidden');
+      }
+    }
+
+    async function deleteAll() {
+      if (!confirm('Zbrisati vse analizirane maile?')) return;
+      await fetch('/api/emails', { method: 'DELETE' });
+      location.reload();
+    }
+
+    loadEmails();
+  </script>
+</body>
+</html>
