@@ -120,7 +120,7 @@ Vrni ta JSON:
 ⚠️ Vrni SAMO JSON brez kakršnega koli besedila zunaj JSON objekta."""
 
     resp = openai_client.chat.completions.create(
-        model="GPT 5.4",
+        model="gpt-5.4",
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": f"E-mail:\n\n{email_text}"},
@@ -151,7 +151,7 @@ Razpoložljivi primeri:
 {cases_summary}"""
 
     resp = openai_client.chat.completions.create(
-        model="GPT 5.4",
+        model="gpt-5.4",
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": user},
@@ -249,7 +249,7 @@ RELEVANTNI PRIMERI IZ BAZE:
 {cases_text}"""
 
     resp = openai_client.chat.completions.create(
-        model="GPT 5.4",
+        model="gpt-5.4",
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": user},
