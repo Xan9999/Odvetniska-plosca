@@ -242,14 +242,6 @@
 
       </div>
 
-      <!-- Detail panel: Q&A / Citation detail (click-triggered, persistent) -->
-      <div id="detail-panel" class="hidden bg-white border border-indigo-200 rounded-xl shadow-sm overflow-hidden">
-        <div class="px-5 py-3 border-b border-indigo-100 flex items-center justify-between bg-indigo-50">
-          <span id="detail-panel-label" class="text-xs font-semibold text-indigo-700"></span>
-          <button onclick="closeDetailPanel()" class="text-indigo-400 hover:text-indigo-700 text-lg leading-none">&times;</button>
-        </div>
-        <div id="detail-panel-body" class="px-5 py-4 text-xs text-slate-700 leading-relaxed space-y-3"></div>
-      </div>
 
       <!-- Attachments -->
       <div id="attachments-card" class="hidden bg-white border border-slate-200 rounded-xl shadow-sm px-5 py-3">
@@ -292,27 +284,32 @@
                   <span id="complexity-num" class="text-xs font-bold text-slate-700 w-8 text-right"></span>
                 </div>
               </div>
-              <div class="bg-slate-50 rounded-lg px-3 py-2 cursor-help" data-tooltip-key="aml_razlaga">
-                <p class="text-xs text-slate-400 mb-0.5">AML / KYC tveganje</p>
+              <div class="bg-slate-50 rounded-lg px-3 py-2 cursor-pointer hover:bg-slate-100 transition-colors select-none" onclick="toggleKycAml()">
+                <div class="flex items-center justify-between">
+                  <p class="text-xs text-slate-400 mb-0.5">Tveganje</p>
+                  <svg id="kyc-aml-chevron" class="w-3.5 h-3.5 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </div>
                 <p id="aml-label" class="text-sm font-semibold"></p>
               </div>
             </div>
           </div>
 
-          <!-- Sources -->
-          <div id="tfl-refs-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-            <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Relevantni pravni viri</h3>
-            <ul id="tfl-refs-list" class="space-y-2"></ul>
+          <!-- KYC / AML detail (expandable) -->
+          <div id="kyc-aml-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-4">
+            <div>
+              <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">KYC — stranke</h3>
+              <div id="kyc-entities" class="space-y-2"></div>
+            </div>
+            <div>
+              <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">AML indikatorji</h3>
+              <div id="aml-indicators" class="space-y-1"></div>
+            </div>
+            <p id="kyc-aml-razlaga" class="text-xs text-slate-500 leading-relaxed border-t border-slate-100 pt-3 hidden"></p>
           </div>
 
-          <!-- Questions -->
-          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-            <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Usmerjevalna vprašanja</h3>
-            <p class="text-xs text-indigo-500 mb-3">Označena se pojavijo v mailu</p>
-            <ul id="questions-list" class="space-y-2.5"></ul>
-          </div>
-
-          <!-- AML checklist -->
+          <!-- AML checklist (dokumentacija) -->
           <div id="aml-checklist-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
             <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Potrebna dokumentacija (ZPPDFT-2)</h3>
             <ul id="aml-checklist" class="space-y-2 mb-3"></ul>
@@ -325,15 +322,28 @@
             </div>
           </div>
 
-          <!-- TFL legal Q&A chat -->
+          <!-- Questions (vprašanja) -->
+          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Usmerjevalna vprašanja</h3>
+            <p class="text-xs text-indigo-500 mb-3">Označena se pojavijo v mailu</p>
+            <ul id="questions-list" class="space-y-2.5"></ul>
+          </div>
+
+          <!-- Sources (viri) -->
+          <div id="tfl-refs-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Relevantni pravni viri</h3>
+            <ul id="tfl-refs-list" class="space-y-2"></ul>
+          </div>
+
+          <!-- AI pomoč (TFL chat) -->
           <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
             <div class="flex items-center gap-2 mb-3">
-              <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Pravna baza</h3>
+              <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide">AI pomoč</h3>
               <span class="text-xs text-slate-400 bg-slate-100 rounded px-1.5 py-0.5">Tax-Fin-Lex</span>
             </div>
             <div id="tfl-chat-messages" class="space-y-3 mb-3 max-h-72 overflow-y-auto"></div>
             <div class="flex gap-1.5">
-              <input id="tfl-input" type="text" placeholder="Vprašaj pravno bazo…"
+              <input id="tfl-input" type="text" placeholder="Vprašaj AI pomoč…"
                 class="flex-1 text-xs border border-slate-200 rounded-md px-2.5 py-2 focus:outline-none focus:border-indigo-400"
                 onkeydown="if(event.key==='Enter') tflAsk()" />
               <button onclick="tflAsk()"
@@ -355,13 +365,20 @@
 
       <!-- Deadline -->
       <div id="deadline-card" class="hidden bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Rok</h3>
-        <div class="flex items-center gap-3">
+        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Rok &amp; nujnost</h3>
+        <div class="flex items-center gap-3 mb-2">
           <div id="deadline-icon" class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0">⏱</div>
           <div>
             <p id="deadline-label" class="font-semibold text-slate-800 text-sm"></p>
             <p id="deadline-desc"  class="text-xs text-slate-500 mt-0.5"></p>
           </div>
+        </div>
+        <div id="nujnost-row" class="hidden flex items-center gap-2 pt-2 border-t border-slate-100">
+          <span class="text-xs text-slate-400 shrink-0">Nujnost:</span>
+          <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div id="nujnost-bar" class="h-full rounded-full transition-all"></div>
+          </div>
+          <span id="nujnost-label" class="text-xs font-semibold shrink-0"></span>
         </div>
       </div>
 
@@ -491,8 +508,9 @@
       document.getElementById('status-badge').innerHTML = `<span class="text-xs font-medium px-2 py-1 rounded-md ${sc}">${sl}</span>`;
 
       renderConflict(r.conflict || {});
-      renderDeadline(r.analysis?.rok || {});
+      renderDeadline(r.analysis?.rok || {}, r.analysis?.nujnost ?? 0);
       renderMetrics(r.analysis || {});
+      renderKycAml(r.analysis || {});
       renderAmlChecklist(r.analysis || {});
       renderTeamPanels();
       renderQuestionsPanel();
@@ -530,7 +548,7 @@
       // Proposed meeting date
       if (selectedDate) {
         const d = new Date(selectedDate + 'T12:00:00');
-        const dateFmt = d.toLocaleDateString('sl-SI', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+        const dateFmt = d.toLocaleDateString('sl-SI', {day:'numeric', month:'long', year:'numeric'});
         text = text.replaceAll('{{PREDLAGANI_TERMIN}}', dateFmt);
       } else {
         text = text.replaceAll('{{PREDLAGANI_TERMIN}}', '[datum videokonference]');
@@ -717,15 +735,6 @@
         ${cit.izid  ? `<br><span class="text-green-700 font-medium">✓ ${esc(cit.izid)}</span>` : ''}`;
 
       if (anchorEl) insertInlineTip(anchorEl, innerHtml, 'cite-tip');
-
-      document.getElementById('detail-panel-label').textContent = `Primer [${num}]`;
-      document.getElementById('detail-panel-body').innerHTML = `
-        <p class="font-semibold text-slate-800">${esc(cit.naslov || '')}</p>
-        ${cit.leto ? `<p class="text-slate-400">Leto ${cit.leto}</p>` : ''}
-        ${cit.opis  ? `<p class="text-slate-600">${esc(cit.opis)}</p>` : ''}
-        ${cit.izid  ? `<p class="text-green-700 font-medium">✓ ${esc(cit.izid)}</p>` : ''}
-      `;
-      document.getElementById('detail-panel').classList.remove('hidden');
     }
 
     function showQAPanel(idx, anchorEl) {
@@ -733,7 +742,7 @@
       if (!qa) return;
       const srcs = qa.sources || [];
       const srcHtml = srcs.length
-        ? `<div class="pt-2 border-t border-slate-100 space-y-1">
+        ? `<div class="mt-2 pt-2 border-t border-slate-100 space-y-1">
             <p class="text-slate-400 font-medium mb-1">Viri (Tax-Fin-Lex):</p>
             ${srcs.map(s => tflSourceBtn(s)).join('')}
            </div>`
@@ -741,21 +750,13 @@
 
       const tipHtml = `
         <span class="text-slate-400 italic">${esc(qa.vprasanje || '')}</span><br>
-        ${esc(qa.odgovor || '')}`;
+        <span class="text-slate-700">${esc(qa.odgovor || '')}</span>
+        ${srcHtml}`;
 
       if (anchorEl) insertInlineTip(anchorEl, tipHtml, 'qa-tip');
-
-      document.getElementById('detail-panel-label').textContent = `Odgovor ${idx + 1}`;
-      document.getElementById('detail-panel-body').innerHTML = `
-        <p class="text-slate-400 italic mb-1">${esc(qa.vprasanje || '')}</p>
-        <p class="text-slate-700 leading-relaxed">${esc(qa.odgovor || '')}</p>
-        ${srcHtml}
-      `;
-      document.getElementById('detail-panel').classList.remove('hidden');
     }
 
     function closeDetailPanel() {
-      document.getElementById('detail-panel').classList.add('hidden');
       document.querySelectorAll('.cited-sentence,.qa-item').forEach(x => x.classList.remove('active'));
     }
 
@@ -794,25 +795,136 @@
     }
 
     // ── Deadline ──────────────────────────────────────────────────────────────
-    function renderDeadline(rok) {
-      if (!rok?.nujno || rok?.cas_dni == null) return;
+    function renderDeadline(rok, nujnost = 0) {
+      const hasDeadline = rok?.nujno && rok?.cas_dni != null;
+      const nujnostPct = Math.round((nujnost ?? 0) * 100);
+      if (!hasDeadline && nujnostPct < 20) return;
       document.getElementById('deadline-card').classList.remove('hidden');
-      const urgent = rok.cas_dni <= 1;
-      document.getElementById('deadline-icon').textContent = urgent ? '🚨' : '⏱';
-      const lbl = document.getElementById('deadline-label');
-      lbl.textContent = rok.cas_dni === 1 ? 'Manj kot 1 dan' : `${rok.cas_dni} dni`;
-      lbl.className = `font-semibold text-sm ${urgent ? 'text-red-600' : 'text-amber-700'}`;
-      // Show breakdown if both components are known
-      let desc = rok.opis || '';
-      if (rok.zakonski_limit_dni != null && rok.stranka_cas_dni != null) {
-        const zakonski_preostanek = rok.zakonski_limit_dni - (rok.preteklo_dni || 0);
-        desc = `Zakonski preostanek: ${zakonski_preostanek} dni · Stranka: ${rok.stranka_cas_dni} dni`;
-        if (rok.opis) desc += ` — ${rok.opis}`;
+
+      if (hasDeadline) {
+        const urgent = rok.cas_dni <= 1;
+        document.getElementById('deadline-icon').textContent = urgent ? '🚨' : '⏱';
+        const lbl = document.getElementById('deadline-label');
+        lbl.textContent = rok.cas_dni === 1 ? 'Manj kot 1 dan' : `${rok.cas_dni} dni`;
+        lbl.className = `font-semibold text-sm ${urgent ? 'text-red-600' : 'text-amber-700'}`;
+        let desc = rok.opis || '';
+        if (rok.zakonski_limit_dni != null && rok.stranka_cas_dni != null) {
+          const zakonski_preostanek = rok.zakonski_limit_dni - (rok.preteklo_dni || 0);
+          desc = `Zakonski preostanek: ${zakonski_preostanek} dni · Stranka: ${rok.stranka_cas_dni} dni`;
+          if (rok.opis) desc += ` — ${rok.opis}`;
+        }
+        document.getElementById('deadline-desc').textContent = desc;
+      } else {
+        document.getElementById('deadline-icon').textContent = '📋';
+        document.getElementById('deadline-label').textContent = 'Ni določenega roka';
+        document.getElementById('deadline-label').className = 'font-semibold text-sm text-slate-500';
       }
-      document.getElementById('deadline-desc').textContent = desc;
+
+      if (nujnostPct >= 20) {
+        const cfg = nujnostPct >= 80
+          ? { cls: 'bg-red-500',    lbl: 'Kritično',  tc: 'text-red-600' }
+          : nujnostPct >= 60
+          ? { cls: 'bg-orange-400', lbl: 'Visoka',    tc: 'text-orange-600' }
+          : nujnostPct >= 40
+          ? { cls: 'bg-amber-400',  lbl: 'Srednja',   tc: 'text-amber-600' }
+          : { cls: 'bg-slate-300',  lbl: 'Nizka',     tc: 'text-slate-500' };
+        document.getElementById('nujnost-row').classList.remove('hidden');
+        document.getElementById('nujnost-bar').className = `h-full rounded-full transition-all ${cfg.cls}`;
+        document.getElementById('nujnost-bar').style.width = `${nujnostPct}%`;
+        document.getElementById('nujnost-label').textContent = `${cfg.lbl} (${nujnostPct}%)`;
+        document.getElementById('nujnost-label').className = `text-xs font-semibold shrink-0 ${cfg.tc}`;
+      }
     }
 
     // ── Metrics ───────────────────────────────────────────────────────────────
+    // ── KYC / AML detail card ─────────────────────────────────────────────────
+    function toggleKycAml() {
+      const card = document.getElementById('kyc-aml-card');
+      const chevron = document.getElementById('kyc-aml-chevron');
+      const hidden = card.classList.toggle('hidden');
+      chevron.style.transform = hidden ? '' : 'rotate(180deg)';
+    }
+
+    function renderKycAml(a) {
+      const kyc = a.kyc_aml;
+      if (!kyc) return;
+
+      const borderCls = { nizko:'border-slate-200', srednje:'border-amber-300', visoko:'border-red-300' }[kyc.skupno_tveganje] || 'border-slate-200';
+      const card = document.getElementById('kyc-aml-card');
+      card.className = `hidden bg-white border ${borderCls} rounded-xl p-4 shadow-sm space-y-4`;
+
+      // KYC entities
+      const riskDot = { nizko:'bg-green-400', srednje:'bg-amber-400', visoko:'bg-red-500' };
+      const entitiesEl = document.getElementById('kyc-entities');
+      if (kyc.kyc_entitete && kyc.kyc_entitete.length) {
+        entitiesEl.innerHTML = kyc.kyc_entitete.map(e => {
+          const dot = riskDot[e.tveganje] || 'bg-slate-300';
+          const tipBadge = e.tip === 'fizična'
+            ? '<span class="text-xs bg-blue-50 text-blue-600 border border-blue-200 rounded px-1.5 py-0.5 mr-1">fizična</span>'
+            : '<span class="text-xs bg-purple-50 text-purple-600 border border-purple-200 rounded px-1.5 py-0.5 mr-1">pravna</span>';
+          const pepBadge = e.pep
+            ? '<span class="text-xs bg-red-50 text-red-600 border border-red-200 rounded px-1.5 py-0.5 mr-1 font-semibold">PEP</span>'
+            : '';
+          const ajpesBadge = e.lastniška_struktura && e.lastniška_struktura !== 'ni podatkov'
+            ? `<span class="text-xs bg-slate-50 text-slate-500 border border-slate-200 rounded px-1.5 py-0.5">AJPES: ${esc(e.lastniška_struktura)}</span>`
+            : '';
+          return `<div class="flex items-start gap-2 py-1.5 border-b border-slate-50 last:border-0">
+            <span class="w-2 h-2 rounded-full mt-1.5 shrink-0 ${dot}"></span>
+            <div class="flex-1 min-w-0">
+              <div class="flex flex-wrap items-center gap-1 mb-0.5">
+                ${tipBadge}${pepBadge}
+                <span class="text-xs font-medium text-slate-700">${esc(e.ime)}</span>
+              </div>
+              ${ajpesBadge ? `<div class="mb-0.5">${ajpesBadge}</div>` : ''}
+              ${e.pep_razlaga ? `<p class="text-xs text-slate-500 leading-relaxed">${esc(e.pep_razlaga)}</p>` : ''}
+              ${e.opombe ? `<p class="text-xs text-slate-400 leading-relaxed">${esc(e.opombe)}</p>` : ''}
+            </div>
+          </div>`;
+        }).join('');
+      } else {
+        entitiesEl.innerHTML = '<p class="text-xs text-slate-400">Ni entitet za preverjanje.</p>';
+      }
+
+      // AML indicators
+      const AML_TIP_LABEL = {
+        proof_of_funds:          'Izvor sredstev',
+        'lastniška_struktura':   'Lastniška struktura',
+        jurisdikcija:            'Jurisdikcija',
+        gotovinska_intenzivnost: 'Gotovinska intenzivnost',
+        anonimnost:              'Zahteva po anonimnosti',
+        nujnost:                 'Neutemeljena nujnost',
+        corporate_structure:     'Sumljiva korp. struktura',
+      };
+      const indEl = document.getElementById('aml-indicators');
+      if (kyc.aml_indikatorji && kyc.aml_indikatorji.length) {
+        indEl.innerHTML = kyc.aml_indikatorji.map(ind => {
+          const risk = ind.tveganje || 'nizko';
+          const rowCls = ind.prisoten
+            ? { nizko:'bg-slate-50', srednje:'bg-amber-50', visoko:'bg-red-50' }[risk] || 'bg-slate-50'
+            : 'bg-white';
+          const iconCls = ind.prisoten
+            ? { nizko:'text-slate-400', srednje:'text-amber-500', visoko:'text-red-500' }[risk]
+            : 'text-green-400';
+          const icon = ind.prisoten ? { nizko:'●', srednje:'▲', visoko:'⚠' }[risk] : '✓';
+          return `<div class="flex items-start gap-2 rounded px-2 py-1.5 ${rowCls}">
+            <span class="text-xs font-bold ${iconCls} shrink-0 w-4 text-center mt-0.5">${icon}</span>
+            <div class="flex-1 min-w-0">
+              <span class="text-xs font-medium text-slate-700">${esc(AML_TIP_LABEL[ind.tip] || ind.tip)}</span>
+              ${ind.opis ? `<p class="text-xs text-slate-500 leading-relaxed">${esc(ind.opis)}</p>` : ''}
+            </div>
+          </div>`;
+        }).join('');
+      } else {
+        indEl.innerHTML = '<p class="text-xs text-slate-400">Ni indikatorjev.</p>';
+      }
+
+      if (kyc.skupna_razlaga) {
+        const raz = document.getElementById('kyc-aml-razlaga');
+        raz.textContent = kyc.skupna_razlaga;
+        raz.classList.remove('hidden');
+      }
+    }
+
     function renderMetrics(a) {
       document.getElementById('legal-field-badge').textContent = a.legal_field || '';
       document.getElementById('summary-text').textContent = a.povzetek || '';
@@ -1081,7 +1193,7 @@
       text = text.replace('[Vaše ime]', LOGGED_IN.name);
       if (selectedDate) {
         const d = new Date(selectedDate + 'T12:00:00');
-        const dateFmt = d.toLocaleDateString('sl-SI', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+        const dateFmt = d.toLocaleDateString('sl-SI', {day:'numeric', month:'long', year:'numeric'});
         text = text.replace(/\{\{PREDLAGANI[_ ]TERMIN\}\}/gi, dateFmt);
       } else {
         text = text.replace(/\{\{PREDLAGANI[_ ]TERMIN\}\}/gi, '[datum videokonference]');
@@ -1139,7 +1251,7 @@
       text = text.replace(/\bki ima(?:ta|jo)?\b/g,`ki ${vf}`).replace('[Vaše ime]', LOGGED_IN.name);
       if (selectedDate) {
         const d = new Date(selectedDate + 'T12:00:00');
-        text = text.replace(/\{\{PREDLAGANI[_ ]TERMIN\}\}/gi, d.toLocaleDateString('sl-SI',{weekday:'long',day:'numeric',month:'long',year:'numeric'}));
+        text = text.replace(/\{\{PREDLAGANI[_ ]TERMIN\}\}/gi, d.toLocaleDateString('sl-SI',{day:'numeric',month:'long',year:'numeric'}));
       } else {
         text = text.replace(/\{\{PREDLAGANI[_ ]TERMIN\}\}/gi, '[datum videokonference]');
       }
@@ -1184,8 +1296,6 @@
       document.getElementById('right-panel').classList.add('edit-mode-locked');
       const ip = document.getElementById('insight-panel');
       if (ip) ip.classList.add('edit-mode-locked');
-      const dp = document.getElementById('detail-panel');
-      if (dp) dp.classList.add('hidden');
       removeInlineTips();
 
       // Add edit mode banner
@@ -1244,7 +1354,7 @@
       draftText = draftText.replaceAll('{{POTREBNA_DOKUMENTACIJA}}', amlChecklist.map(i=>`• ${i}`).join('\n'));
       if (selectedDate) {
         const d = new Date(selectedDate + 'T12:00:00');
-        const dateFmt = d.toLocaleDateString('sl-SI', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+        const dateFmt = d.toLocaleDateString('sl-SI', {day:'numeric', month:'long', year:'numeric'});
         draftText = draftText.replace(/\{\{PREDLAGANI[_ ]TERMIN\}\}/gi, dateFmt);
       } else {
         draftText = draftText.replace(/\{\{PREDLAGANI[_ ]TERMIN\}\}/gi, '[datum videokonference]');
@@ -1448,7 +1558,7 @@
     function selectDate(iso, rebuild = true) {
       selectedDate = iso;
       const d = new Date(iso + 'T12:00:00');
-      const label = d.toLocaleDateString('sl-SI', {weekday:'short', day:'numeric', month:'long'});
+      const label = d.toLocaleDateString('sl-SI', {day:'numeric', month:'long'});
       const labelEl = document.getElementById('cal-selected-label');
       labelEl.textContent = label;
       labelEl.classList.remove('hidden');
@@ -1491,6 +1601,34 @@
     }
 
     // ── TFL chat ──────────────────────────────────────────────────────────────
+    function buildTflCaseContext() {
+      if (!record) return '';
+      const a = record.analysis || {};
+      const ent = a.entitete || {};
+      const rok = a.rok || {};
+      const kyc = a.kyc_aml || {};
+      const parts = ['=== KONTEKST ZADEVE ==='];
+      if (a.legal_field)  parts.push(`Področje: ${a.legal_field}`);
+      if (a.tip_stranke)  parts.push(`Tip stranke: ${a.tip_stranke}`);
+      const stranke = [...(ent.stranke||[]), ...(ent.nasprotna_stran||[]), ...(ent.ostali_upleteni||[])];
+      if (stranke.length) parts.push(`Stranke: ${stranke.join(', ')}`);
+      if (a.povzetek)     parts.push(`Povzetek: ${a.povzetek}`);
+      if (a.zahtevnost)   parts.push(`Zahtevnost: ${a.zahtevnost}/10`);
+      if (a.aml_tveganje) parts.push(`AML tveganje: ${a.aml_tveganje}`);
+      const rokParts = [];
+      if (rok.preteklo_dni != null)    rokParts.push(`preteklo ${rok.preteklo_dni} dni`);
+      if (rok.cas_dni != null)         rokParts.push(`preostalo ${rok.cas_dni} dni`);
+      if (rok.zakonski_osnova)         rokParts.push(rok.zakonski_osnova);
+      if (rok.opis)                    rokParts.push(rok.opis);
+      if (rokParts.length)             parts.push(`Rok: ${rokParts.join(' · ')}`);
+      const pepFlags = (kyc.kyc_entitete||[]).filter(e=>e.pep).map(e=>e.ime);
+      if (pepFlags.length)             parts.push(`PEP: ${pepFlags.join(', ')}`);
+      const activeAml = (kyc.aml_indikatorji||[]).filter(i=>i.prisoten).map(i=>i.tip);
+      if (activeAml.length)            parts.push(`AML indikatorji: ${activeAml.join(', ')}`);
+      parts.push('======================');
+      return parts.join('\n') + '\n\n';
+    }
+
     async function tflAsk() {
       const input = document.getElementById('tfl-input');
       const q = input.value.trim();
@@ -1521,7 +1659,7 @@
         const res = await fetch('/api/tfl/ask', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ question: q }),
+          body: JSON.stringify({ question: buildTflCaseContext() + q }),
         });
 
         const ansEl = document.getElementById(answerId);
