@@ -6,94 +6,11 @@
   <title>Jadek &amp; Pensa — Analiza</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/static/theme.css" />
-  <style>
-    /* ── Citation sentence highlight ── */
-    .cited-sentence {
-      border-bottom: 2px dotted #f59e0b;
-      cursor: default;
-      border-radius: 2px;
-      padding-bottom: 1px;
-      transition: background 0.12s, border-color 0.12s;
-    }
-    .cited-sentence:hover, .cited-sentence.active {
-      background: #fffbeb;
-      border-bottom-color: #d97706;
-    }
-    .cite-sup { font-size: 0.65em; color: #92400e; font-weight: 700; margin-left: 1px; vertical-align: super; }
-
-    /* ── Q&A answer hover ── */
-    .qa-item {
-      transition: background 0.12s, border-left-color 0.12s;
-      border-radius: 6px;
-      border-left: 3px solid transparent;
-    }
-    .qa-item:hover, .qa-item.active {
-      background: #eff6ff;
-      border-left-color: #3b82f6;
-    }
-
-    /* ── Inline tip (appears under clicked sentence) ── */
-    .inline-tip {
-      margin: 6px 0 10px 0;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-left: 3px solid #6366f1;
-      border-radius: 8px;
-      padding: 10px 13px;
-      font-size: 0.72rem;
-      line-height: 1.5;
-      color: #475569;
-      animation: tipIn 0.12s ease;
-    }
-    .inline-tip.cite-tip { border-left-color: #d97706; }
-    .inline-tip.qa-tip   { border-left-color: #3b82f6; }
-    @keyframes tipIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
-
-    /* ── Edit mode ── */
-    #draft-textarea {
-      width: 100%; min-height: 420px; resize: vertical;
-      font-size: 0.875rem; line-height: 1.75; color: #334155;
-      border: none; outline: none; background: transparent;
-      font-family: inherit;
-    }
-    .edit-mode-locked { opacity: 0.35; pointer-events: none; user-select: none; }
-
-    /* ── Draft paragraphs ── */
-    .draft-body p { margin-bottom: 0.85rem; line-height: 1.75; }
-
-    /* ── Traffic lights ── */
-    .traffic-green  { background: #22c55e; }
-    .traffic-orange { background: #f97316; }
-    .traffic-red    { background: #ef4444; }
-    .traffic-dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-
-    /* ── Team panel drop zones ── */
-    .team-panel-in  { border: 2px dashed #a5b4fc; background: #eef2ff; }
-    .team-panel-out { border: 2px dashed #e2e8f0; background: #f8fafc; }
-    .team-panel-in.drag-over  { border-color: #6366f1; background: #e0e7ff; }
-    .team-panel-out.drag-over { border-color: #94a3b8; background: #f1f5f9; }
-    .atty-card { cursor: grab; transition: opacity 0.15s, box-shadow 0.15s; }
-    .atty-card:active { cursor: grabbing; }
-    .atty-card.dragging { opacity: 0.4; }
-
-    /* ── Print ── */
-    @media print {
-      body > *:not(#print-view) { display: none !important; }
-      #print-view { display: block !important; }
-      #print-view { font-family: Georgia, serif; font-size: 11pt; color: #111; line-height: 1.6; padding: 2cm; }
-      #print-view h1 { font-size: 15pt; font-weight: bold; margin-bottom: 4pt; }
-      #print-view h2 { font-size: 12pt; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 3pt; margin: 16pt 0 6pt; }
-      #print-view .meta { color: #555; font-size: 9.5pt; }
-      #print-view .check-item { display: flex; gap: 8pt; align-items: flex-start; margin: 3pt 0; }
-      #print-view .check-item input { margin-top: 2pt; }
-      #print-view pre { font-family: monospace; font-size: 9pt; background: #f5f5f5; padding: 8pt; white-space: pre-wrap; }
-    }
-  </style>
 </head>
 <body class="bg-slate-50 min-h-screen font-sans">
 
   <!-- Print view (hidden, shown only on print) -->
-  <div id="print-view" style="display:none"></div>
+  <div id="print-view"></div>
 
   <!-- Inline hover popover -->
   <div id="hover-popover">
@@ -140,7 +57,7 @@
   <!-- Global tooltip -->
   <div id="g-tooltip"
     class="hidden fixed z-50 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-xl pointer-events-none leading-relaxed"
-    style="max-width:280px"></div>
+  ></div>
 
   <!-- Header -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
@@ -210,7 +127,7 @@
             </button>
             <button id="btn-mark-sent" onclick="markSent()"
               class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md font-medium transition-colors">
-              Označi kot poslano
+              Pošlji
             </button>
           </div>
         </div>
@@ -1001,7 +918,7 @@
         btnS.className = 'px-3 py-1.5 font-medium bg-green-600 text-white transition-colors';
         btnZ.className = 'px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-50 transition-colors';
         panel.classList.add('hidden');
-        markBtn.textContent = 'Označi kot poslano';
+        markBtn.textContent = 'pošlji';
         markBtn.className = 'text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md font-medium transition-colors';
       } else {
         btnS.className = 'px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-50 transition-colors';
@@ -1224,12 +1141,12 @@
         : '<p class="meta">Ni zahtevane dokumentacije.</p>';
 
       const conflictHtml = {
-        ok:       '<span style="color:#16a34a">✓ Ni konflikta interesov</span>',
-        tveganje: '<span style="color:#d97706">⚠ Potencialno tveganje</span>',
-        konflikt: '<span style="color:#dc2626">✗ KONFLIKT INTERESOV</span>',
+        ok:       '<span class="jp-print-conflict jp-conflict-ok">✓ Ni konflikta interesov</span>',
+        tveganje: '<span class="jp-print-conflict jp-conflict-risk">⚠ Potencialno tveganje</span>',
+        konflikt: '<span class="jp-print-conflict jp-conflict-bad">✗ KONFLIKT INTERESOV</span>',
       }[cf.status] || '—';
 
-      const amlColor = { nizko:'#16a34a', srednje:'#d97706', visoko:'#dc2626' }[a.aml_tveganje] || '#333';
+      const amlClass = { nizko:'jp-aml-nizko', srednje:'jp-aml-srednje', visoko:'jp-aml-visoko' }[a.aml_tveganje] || 'jp-aml-unknown';
 
       // Draft plain text
       let draftText = record.draft || '';
@@ -1257,7 +1174,7 @@
 
       // Q&A blocks
       const qaHtml = qaBlocks.length ? qaBlocks.map((qa,i) => `
-        <div style="margin-bottom:10pt">
+        <div class="jp-print-qa">
           <p class="meta">${i+1}. ${esc(qa.vprasanje)}</p>
           <p>${esc(qa.odgovor)}</p>
           ${(qa.sources||[]).length ? `<p class="meta">Viri: ${qa.sources.map(s=>esc(s.title)).join(', ')}</p>` : ''}
@@ -1292,7 +1209,7 @@
         <p>${conflictHtml}</p>${conflictDetail}
 
         <h2>AML / KYC tveganje</h2>
-        <p><strong><span style="color:${amlColor}">${({nizko:'Nizko',srednje:'Srednje',visoko:'Visoko'})[a.aml_tveganje]||'—'}</span></strong></p>
+        <p><strong><span class="jp-print-aml ${amlClass}">${({nizko:'Nizko',srednje:'Srednje',visoko:'Visoko'})[a.aml_tveganje]||'—'}</span></strong></p>
         ${a.aml_razlaga ? `<p class="meta">${esc(a.aml_razlaga)}</p>` : ''}
 
         <h2>Ekipa</h2>

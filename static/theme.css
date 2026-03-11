@@ -236,6 +236,74 @@
   color: rgba(117, 117, 117, 0.65) !important;
 }
 
+/* Small component styles moved from inline <style> blocks in HTML. */
+.jp-theme .card-hover { transition: box-shadow 0.15s, transform 0.15s; }
+.jp-theme .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.jp-theme #g-tooltip { max-width: 280px; }
+.jp-theme #print-view { display: none; }
+
+.jp-theme .cited-sentence {
+  border-bottom: 2px dotted rgba(24, 25, 120, 0.35);
+  cursor: default;
+  border-radius: 2px;
+  padding-bottom: 1px;
+  transition: background 0.12s, border-color 0.12s;
+}
+.jp-theme .qa-item {
+  transition: background 0.12s, border-left-color 0.12s;
+  border-radius: 6px;
+  border-left: 3px solid transparent;
+}
+
+@keyframes jpTipIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.jp-theme .inline-tip {
+  margin: 6px 0 10px 0;
+  border: 1px solid var(--vs-border) !important;
+  border-left: 3px solid var(--vs-accent);
+  border-radius: 8px;
+  padding: 10px 13px;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  animation: jpTipIn 0.12s ease;
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: var(--vs-border) !important;
+  color: var(--vs-text) !important;
+}
+.jp-theme .inline-tip.cite-tip { border-left-color: var(--vs-warn); }
+.jp-theme .inline-tip.qa-tip   { border-left-color: var(--vs-accent); }
+
+.jp-theme #draft-textarea {
+  width: 100%;
+  min-height: 420px;
+  resize: vertical;
+  font-size: 0.875rem;
+  line-height: 1.75;
+  color: #334155;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+}
+.jp-theme .edit-mode-locked { opacity: 0.35; pointer-events: none; user-select: none; }
+.jp-theme .draft-body p { margin-bottom: 0.85rem; line-height: 1.75; }
+
+.jp-theme .traffic-green  { background: #22c55e; }
+.jp-theme .traffic-orange { background: #f97316; }
+.jp-theme .traffic-red    { background: #ef4444; }
+.jp-theme .traffic-dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+.jp-theme .team-panel-in  { border: 2px dashed #a5b4fc; background: #eef2ff; }
+.jp-theme .team-panel-out { border: 2px dashed #e2e8f0; background: #f8fafc; }
+.jp-theme .team-panel-in.drag-over  { border-color: #6366f1; background: #e0e7ff; }
+.jp-theme .team-panel-out.drag-over { border-color: #94a3b8; background: #f1f5f9; }
+.jp-theme .atty-card { cursor: grab; transition: opacity 0.15s, box-shadow 0.15s; }
+.jp-theme .atty-card:active { cursor: grabbing; }
+.jp-theme .atty-card.dragging { opacity: 0.4; }
+
 /* Cards and hover affordances */
 .jp-theme .card-hover:hover {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12) !important;
@@ -258,12 +326,6 @@
   border-left-color: var(--vs-accent) !important;
 }
 
-.jp-theme .inline-tip {
-  background: rgba(255, 255, 255, 0.92) !important;
-  border-color: var(--vs-border) !important;
-  color: var(--vs-text) !important;
-}
-
 /* Scrollbars (Chrome/Edge) */
 .jp-theme .custom-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
 .jp-theme .custom-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -271,9 +333,22 @@
 .jp-theme .custom-scroll::-webkit-scrollbar-thumb:hover { background: #b7bac8; }
 
 @media print {
-  .jp-theme body {
-    background: #ffffff !important;
-    color: #111111 !important;
-    color-scheme: light;
-  }
+  .jp-theme body > *:not(#print-view) { display: none !important; }
+  .jp-theme #print-view { display: block !important; }
+  .jp-theme #print-view { font-family: Georgia, serif; font-size: 11pt; color: #111; line-height: 1.6; padding: 2cm; }
+  .jp-theme #print-view h1 { font-size: 15pt; font-weight: bold; margin-bottom: 4pt; }
+  .jp-theme #print-view h2 { font-size: 12pt; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 3pt; margin: 16pt 0 6pt; }
+  .jp-theme #print-view .meta { color: #555; font-size: 9.5pt; }
+  .jp-theme #print-view .jp-print-qa { margin-bottom: 10pt; }
+  .jp-theme #print-view .jp-print-conflict { font-weight: 700; }
+  .jp-theme #print-view .jp-conflict-ok { color: #16a34a; }
+  .jp-theme #print-view .jp-conflict-risk { color: #d97706; }
+  .jp-theme #print-view .jp-conflict-bad { color: #dc2626; }
+  .jp-theme #print-view .jp-print-aml.jp-aml-nizko { color: #16a34a; }
+  .jp-theme #print-view .jp-print-aml.jp-aml-srednje { color: #d97706; }
+  .jp-theme #print-view .jp-print-aml.jp-aml-visoko { color: #dc2626; }
+  .jp-theme #print-view .jp-print-aml.jp-aml-unknown { color: #333333; }
+  .jp-theme #print-view .check-item { display: flex; gap: 8pt; align-items: flex-start; margin: 3pt 0; }
+  .jp-theme #print-view .check-item input { margin-top: 2pt; }
+  .jp-theme #print-view pre { font-family: monospace; font-size: 9pt; background: #f5f5f5; padding: 8pt; white-space: pre-wrap; }
 }
