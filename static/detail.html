@@ -1056,9 +1056,6 @@
         <p><strong>${esc(s.name)}</strong> &lt;${esc(s.email)}&gt;<br>
         <span class="meta">Zadeva: ${esc(s.subject)}</span></p>
 
-        <h2>Osnutek odgovora</h2>
-        <pre>${esc(draftText)}</pre>
-
         <h2>Analiza</h2>
         <p><strong>Pravno področje:</strong> ${esc(a.legal_field || '—')}</p>
         <p><strong>Povzetek:</strong> ${esc(a.povzetek || '—')}</p>
@@ -1075,17 +1072,20 @@
         <h2>Ekipa</h2>
         <p>${esc(teamNames)}</p>
 
-        <h2>Odgovori na vprašanja stranke</h2>
-        ${qaHtml}
+        <h2>Potrebna dokumentacija (ZPPDFT-2)</h2>
+        ${checklistHtml}
 
         <h2>Relevantni pravni viri (Tax-Fin-Lex)</h2>
         ${tflRefsHtml}
 
-        <h2>Potrebna dokumentacija (ZPPDFT-2)</h2>
-        ${checklistHtml}
+        <h2>Odgovori na vprašanja stranke</h2>
+        ${qaHtml}
 
         <h2>Originalni mail</h2>
         <pre>${esc(record.body)}</pre>
+
+        <h2>Osnutek odgovora</h2>
+        <pre>${esc(draftText)}</pre>
       `;
       window.print();
     }
